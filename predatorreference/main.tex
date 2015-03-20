@@ -1,0 +1,24 @@
+\label{chapter:preditor}
+
+This chapter presents \Predator{}, which improves the effectiveness of false sharing detection. \SheriffDetect{} reports false sharing accurately and precisely with only $20\%$ performance overhead. However, it can only detect the write-write type of false sharing for those programs using \pthreads{}. \SheriffDetect{} can also break programs that communicate across different threads using stack variables or self-defined synchronizations. These shortcomings greatly limit \SheriffDetect{}'s usage on real-world applications.  
+
+In contrast to \SheriffDetect{}, \Predator{} detects all types of false sharing and has no limitations on applications. \Predator{} has been utilized to find actual false sharing problems of real applications, including \texttt{MySQL} and the \texttt{Boost} library.
+
+In addition, \SheriffDetect{} and other systems share one key limitation: they can only report \emph{observed} cases of false sharing. As Nanavati et al.\ point out, false sharing is sensitive to where objects are placed in cache lines and so can be affected by a wide range of factors~\cite{OSdetection}. For example, using the gcc compiler \emph{accidentally} eliminates false sharing of the linear\_regression benchmark at certain optimization levels, while LLVM does not do so at any optimization level.  A slightly different memory allocation sequence (or different memory allocator) can reveal or hide false sharing, depending on where objects end up in memory; using a different hardware platform with different addressing or cache line sizes can have the same effect. All of this means that existing tools cannot root out potentially devastating cases of false sharing that could arise with different inputs, in different execution environments, and on different hardware platforms.
+
+\Predator{} is the first system that can \emph{predict} potential false sharing that does not manifest in an execution, but may appear and greatly degrade the performance of programs in a slightly different environment. Predictive false sharing generalizes from a single execution to identify potential false sharing instances that fall into two adjacent cache lines, which could be exposed by slight changes in object placement and alignment. It also can predict false sharing in hardware platforms with larger cache line sizes by tracking accesses within \emph{virtual cache lines} that span multiple physical lines. Predictive false sharing detection thus help avoids the predicament of previous detection tools: those problems can easily leak to deployment environment because of the changed execution environment.
+
+Here, we first describe \Predator{}'s false sharing detection mechanism in Section~\ref{sec:detection}, which consists of both compiler and runtime system components. Section~\ref{sec:prediction} then explains how \Predator{} predicts potential false sharing based on a single execution.
+
+\section{False Sharing Detection}
+\input{predatordetection.tex}
+
+\section{False Sharing Prediction}
+\input{predatorprediction.tex}
+
+\section{Evaluation}
+\input{predatorevaluation.tex}
+
+\section{Discussion}
+\input{predatordiscuss.tex}
+
