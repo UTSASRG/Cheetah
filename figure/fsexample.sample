@@ -1,0 +1,9 @@
+int count[numCounters];
+int window=numCounters/numThreads; 
+void threadFunc(int start) 
+{
+  for(index=start; index<start+window; index++)
+    for(i=0; i<10000000; j++)
+      count[index]++;
+}
+

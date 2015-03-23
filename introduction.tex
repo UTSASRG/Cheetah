@@ -20,9 +20,9 @@ A false sharing example inside a multithreaded program (a) causes $13\times$ per
 \end{figure*}
 
 % Now we will talk about existing tools. 
-False sharing problems like Figure~\ref{fig:penalty} are often invisible in the source code. Traditional profilers cannot be utilized to detect false sharing performance problems. For the example shown in Figure~\ref{fig:penalty}, ``gprof'' will show that  nearly 100\% time is spending on threadFunc~\cite{gprof}. This is the truth. But we cannot tell whether there is a false sharing problem inside or not.
+False sharing problems like Figure~\ref{fig:penalty} are often invisible in the source code. Traditional profilers cannot be utilized to detect false sharing performance problems. For the example shown in Figure~\ref{fig:penalty}, ``gprof'' will show that nearly 100\% time is spending on threadFunc~\cite{gprof}, which is the real truth. However, we cannot tell whether there is a false sharing problem inside or not.
 
-Detecting false sharing problems needs special tools but existing false sharing detection have different types of problems: most cannot report precise information of false sharing, leaving much burden for programers for fixing~\cite{falseshare:binaryinstrumentation1,detect:ptu,detect:intel,falseshare:binaryinstrumentation2,DProf, qinzhao, OSdetection, mldetect, Wicaksono11detectingfalse, openmp}; some introduce too much performance overhead, making them impractical to be utilized in deployment environment~\cite{falseshare:binaryinstrumentation1,falseshare:binaryinstrumentation2,falseshare:simulator, Predator}; some require special OS support ~\cite{OSdetection} or only work on a special type of applications~\cite{sheriff}.
+Detecting false sharing problems needs special tools but existing false sharing detection have different problems: most cannot report precise information of false sharing, leaving much burden for programers for fixing~\cite{falseshare:binaryinstrumentation1,detect:ptu,detect:intel,falseshare:binaryinstrumentation2,DProf, qinzhao, OSdetection, mldetect, Wicaksono11detectingfalse, openmp}; some introduce too much performance overhead, making them impractical to be utilized in deployment environment~\cite{falseshare:binaryinstrumentation1,falseshare:binaryinstrumentation2,falseshare:simulator, Predator}; some require special OS support ~\cite{OSdetection} or only work on a special type of applications~\cite{sheriff}.
 
 \vspace{0.2in}
 
@@ -37,7 +37,7 @@ Detecting false sharing problems needs special tools but existing false sharing 
 
 \end{itemize}
 
-
+The remainder of this paper is organized as follows. Section~\ref{sec:overview} introduces the background of false sharing and \cheetah{}'s basic idea. Section~\ref{sec:implement} describes implementations in detail. Section~\ref{sec:eval} presents experimental results, including effectiveness, performance overhead, and memory overhead. Section~\ref{sec:relatedwork} discusses some related work and Section~\ref{sec:relatedwork} concludes this paper. 
 
 
 
