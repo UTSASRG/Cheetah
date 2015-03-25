@@ -6,6 +6,8 @@
 \subsection{Predicting false sharing}
 \subsection{Predicting performance improvement}
 
+\label{sec:predictimprove}
+
 Fixing false sharing problems can be non-trivial, even with precise information about a particular false sharing problem. Several problems may occur. 
 The first problem is that some false sharing problems can be insignificant. 
 For example, Sheriff reports few false sharing problems. But fixing them brings negligible performance benefit, such as word\_count or reverse\_index applications in Phoenix example. 
@@ -19,4 +21,19 @@ We predict how much performance slowdown that can be caused .
 \cheetah{} provides a upper bound on performance improvement after fixes. 
 
 It is note that sampling based approaches can actually 
+
+% The total number of memory accesses on an addresses
+
+% The total latency of accessing an address
+
+% The total number of memory accesses for each thread. 
+
+% The total latency of all memory accesses for each thread  
+
+% All memory accesses of each thread
+
+% All memory accesses in total = Sum of (memory accesses of each thread)
+
+% Total latency of all memory accesses for each thread. 
+
  

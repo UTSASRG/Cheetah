@@ -1,6 +1,7 @@
 \label{sec:overview}
 
 \subsection{Background of False Sharing}
+\label{sec:background}
 
 In the multicore era, multithreading is the basic way to utilize underlying hardware cores by running different threads on different cores. When a thread modifies data of a cache line, the underlying cache coherence protocol (inside hardware) silently invalidates the duplicates of this cache line on other cores. This is to guarantee correct executions for true sharing instances like that shown in Figure~\ref{fig:tsinfs}. However, for false sharing case (e.g. Figure~\ref{fig:fsinfs}), these invalidations are totally unnecessary when different tasks are actually accessing different words of the same line. Cache invalidations may force other cores to wait for reloading of data unnecessarily, wasting CPU time and precious memory bandwidth. A big amount of unnecessary cache invalidations can hugely affect the performance of software. %Thus, it is urgent to develop some tools and systems to tackle with this problem. 
 
@@ -99,32 +100,35 @@ After the computation,
 \subsection{Basic Idea of Predicting Performance Improvement}
 \label{sec:predictimprovement}
 
-\paragraph{Remaining problem:} Existing tools cannot predict whether fixing a false sharing problem can improve the performance or not~\cite{sheriff, Predator, openmp}. They might report some insignificant false sharing problems if the number of cache invalidations, either captured or predicted, is over a pre-defined threshold. For example, all of these tools report an false sharing problem at reverse\_index application of the Phoenix benchmark suite but there is no significant performance improvement after fixing it. Unnecessary false sharing instances are not false positives, but reporting them increases unnecessary burden for programmers. Different with all existing tools, \Cheetah{} only reports those false sharing problems that can have performance impact.  
+\paragraph{Current problem:} Existing tools cannot predict whether fixing a false sharing problem can improve the performance or not~\cite{sheriff, Predator, openmp}. They might report some insignificant false sharing problems even when the number of cache invalidations on a cache line is over a pre-defined threshold. For example, all of these tools report an false sharing problem at reverse\_index application of the Phoenix benchmark suite but there is no significant performance improvement after fixing it. Unnecessary false sharing instances are not false positives, but reporting them increases burden for programmers and will not bring the performance improvement after fixes. Different with all existing tools, \Cheetah{} only reports false sharing problems that can have performance impact based on its prediction of performance improvement.  
 
-\Cheetah{} is the first tool that can derive the upper bound of performance improvement after fixes. \Cheetah{} utilizes the latency  information of every memory access that can provided by either Intel's PEBS registers or AMD's IBS registers when sampling memory accesses. 
+{\bf \Cheetah{} is the first tool that can predict performance improvement after fixes}, which utilizes the latency information (e.g. cycles) of every memory access that can be provided by either Intel's PEBS registers or AMD's IBS registers. \Cheetah{} considers the sum of cycles to be the running time. \Cheetah{} further use the sampling result to represent the whole execution, which is reasonable given that sampling is evenly distributed among the whole execution. 
+%Note that it is difficult or even impossible to precisely predict the performance improvement after fixes. For example, sharing of cache lines can be different or fixing a false sharing may introduce performance variance. 
 
-% What is the basic idea inside?
-To describe our idea easily, we denote an memory access as an {\bf susceptible access} if this memory access occurs on  
-The sampling mechanism provides us a percentage of a specific memory access (on a specific address) across all memory accesses. 
+\Cheetah{} aims to predict a upper bound of performance improvement percentage, but not an absolute value of time saving. We believe that this is more valuable since programmers can only focus on false sharing problems that fixing them can bring the performance improvement, e.g., with more than 2\% performance improvement.   
 
-% The total number of memory accesses on an addresses
+According to our understanding, the actual runtime (denoted as $Runtime_{real}$) is the sum of the actual runtime spending on the current object ($Runtime_{obj\_real}$) and the actual runtime spending on other objects or variables ($Runtime_{others\_real}$). Because of this, we will have the EQ.(\ref{eq:actual}). 
 
-% The total latency of accessing an address
+\begin{equation}
+\label{eq:actual}
+Runtime_{real}=Runtime_{obj\_real} + Runtime_{others\_real}
+\end{equation} 
 
-% The total number of memory accesses for each thread. 
+{\it We further assume that fixing an false sharing problem will not introduce performance impact on other variables or objects}. If we fix false sharing of an object, the predicted runtime after fixing ($Runtime_{pred}$) is the sum of the predicted time spending on the current object ($Runtime_{obj\_pred}$) and the actual runtime spending on other objects or variables ($Runtime_{others\_real}$), we will have the EQ.(\ref{eq:pred}). 
 
-% The total latency of all memory accesses for each thread  
+\begin{equation}
+\label{eq:pred}
+Runtime_{pred}=Runtime_{obj\_pred}+Runtime_{others\_real}
+\end{equation} 
 
-% All memory accesses of each thread
+Based on these two equations, we can easily compute the performance improvement (denoted as $Perf_{improve}$) after fixing a specific false sharing, shown as EQ.(\ref{eq:improvement}). 
+\begin{equation}
+\label{eq:improvement}
+Perf_{improve}=(Runtime_{actual} - Runtime_{pred})/Runtime_{actual}
+\end{equation} 
 
-% All memory accesses in total = Sum of (memory accesses of each thread)
+According to EQ.(\ref{eq:improvement}), predicting performance improvement turns into the computation of $Runtime_{pred}$. $Runtime_{actual}$ can be easily computed through the sampling result if we have the latency information of every memory access and we are using the sampling result to represent the whole execution.  
 
-% Total latency of all memory accesses for each thread. 
-
-
-
-% Why we can only report the upper bound? For example, we know that fixing false sharing problem may introduce unnecessary words in the cache line, which can also slowdown the performance overhead. 
-
-Results of this prediction can be seen in the Section~\ref{}. 
+{\bf The basic idea of predicting the running time spending on a falsely-shared object is to replace the actual access latency of every memory access with the average access latency of an access without false sharing}. In actual fixes,   padding unnecessary words into structures or classes (as described in Section~\ref{sec:background}) can reduce the memory efficiency and may even degrade the performance of an application~\cite{qinzhao}. Thus, our prediction actually provides an upper bound of performance improvement that can be achieved by fixes. More implementation details about how to compute the $Runtime_{pred}$ and $Runtime_{actual}$ are further discussed in Section~\ref{sec:predictimprove}. We also evaluate the precision of our prediction in Section~\ref{sec:evalperfpred}.
 
 
