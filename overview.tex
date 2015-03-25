@@ -47,13 +47,13 @@ Assumption 2 further assumes that the sizes of caches are infinite. Thus, we do 
 % To reduce the performance overhead, 
 % Basic idea, by examing the memory access pattern
 
-\subsubsection{Sampling Memory Accesses Using Performance Counters}
+\subsubsection{Sampling Memory Accesses}
 \label{sec:perfcounter}
 
 According to the basic rule described in Section~\ref{sec:basicidea}, we should track memory accesses in order to compute the number of cache invalidations on each cache line. 
 
 
-The previous work \Predator{} leverages on compiler instrumentation to insert function calls before every memory access that is going to handled by \Predator{}'s runtime system~\cite{Predator}. However, this approach introduces more than $5\times$ performance overhead by tracking every memory access. More than that, \Predator{} has to re-compile applications, which needs the availability of source code. \Predator{} is not desirable for legacy applications or real deployment that is sensitive to performance. 
+Previous work \Predator{} leverages on compiler instrumentation to insert function calls before every memory access that is going to handled by \Predator{}'s runtime system~\cite{Predator}. However, this approach introduces more than $5\times$ performance overhead by tracking every memory access. More than that, \Predator{} has to re-compile applications, which needs the availability of source code. \Predator{} is not desirable for legacy applications or real deployment that is sensitive to performance. 
 
 \cheetah{} aims to significantly reduce the performance overhead of tracking memory accesses by leveraging hardware performance counters that are available on most modern hardware. Hardware performance counters can provide sampling based information about how the hardware is being exercised by a program, which have been utilized widely for different purposes~\cite{Mucci99papi}. Performance counters were also utilized by previous work to identify false sharing problems. But existing work suffered from different problems, which has been discussed in Section~\ref{sec:relatedwork}. All of them can not differentiate false sharing with true sharing. 
  
