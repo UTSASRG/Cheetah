@@ -23,9 +23,12 @@
 
 #include <time.h>
 #include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "finetime.h"
-double cpu_freq = 2327507.08008; // FIX ME What?
+double cpu_freq = 1200781;
+// 2327507.08008; // FIX ME What?
 
 void __get_time(struct timeinfo * ti)
 {
@@ -43,10 +46,17 @@ double __count_elapse(struct timeinfo * start, struct timeinfo * stop)
 {
 	double elapsed = 0.0;
 
-	elapsed = (double)(stop->low - start->low) + (double)(UINT_MAX)*(double)(stop->high - start->high);
-	if (stop->low < start->low)
-		elapsed -= (double)UINT_MAX;
+	elapsed = (double)(stop->low) + (double)(UINT_MAX)*(double)(stop->high - start->high) - (double)start->low;
+	//if (stop->low < start->low)
+	//	elapsed -= (double)UINT_MAX;
 
+	printf("STOP: low %ld hight %ld START: low %ld high %ld\n", stop->low, stop->high, start->low, start->high);
+	
+	printf("elapsed %f\n", elapsed);
+ 
+	if(elapsed > 5000.0) {
+		//while(1);
+	}
 	return elapsed;
 }
 
@@ -99,5 +109,8 @@ unsigned long elapsed2ms(double elapsed)
 	unsigned long ms;
 //	ms =(unsigned long)(elapsed*1000000.0/cpu_freq);
 	ms =(unsigned long)(elapsed/cpu_freq);
+	if(ms > 5000) {
+		while(1) ;
+	}
 	return(ms);
 }
