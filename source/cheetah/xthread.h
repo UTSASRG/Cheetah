@@ -101,6 +101,7 @@ public:
   }
 
 	void insertThreadMap(pthread_t tid, thread_t * thread) {
+		fprintf(stderr, "insertThreadMap tid %ld\n", tid);
 		threadmap::getInstance().insertThread(tid, thread);
 	}
 
@@ -261,6 +262,9 @@ public:
     children->startArg = arg;
 
     result =  WRAP(pthread_create)(tid, attr, startThread, (void *)children);
+		
+		// Insert the child thread into the threadmap
+		insertThreadMap(*tid, children);
 
     return result;
   }      
@@ -268,14 +272,16 @@ public:
 
 	int thread_join(pthread_t thread, void **retval)  {
 		int ret;
-		thread_t * thisThread;
 
 		
 		ret = WRAP(pthread_join(thread, retval));
 
 		if(ret == 0) {
+			thread_t * thisThread;
 			// Finding out this thread.
 			thisThread = getThreadInfoByTid(thread);
+
+			fprintf(stderr, "thread_join on tid %ld and this Thread %p\n", thread, thisThread);
 			markThreadExit(thisThread);
 		}
 
