@@ -50,7 +50,6 @@ private:
     { }
 
 public:
-	
 	struct threadLevelInfo {
 		int beginIndex;
 		int endIndex;
@@ -113,6 +112,10 @@ public:
 		removeThreadMap(thread->self);
 	}
 
+	thread_t * getThreadInfoByTid(pthread_t tid) {
+		return threadmap::getInstance().getThreadInfo(tid);
+	}
+
   // Initialize the first threadd
   void initInitialThread(void) {
     int tindex;
@@ -121,12 +124,12 @@ public:
     tindex = allocThreadIndex( );
 
     // Get corresponding thread_t structure.
-    current  = getThreadInfo(tindex);
+    current  = getThreadInfoByIndex(tindex);
     current->self  = pthread_self();
 		insertThreadMap(current->self, current);
   }
 
-  thread_t * getThreadInfo(int index) {
+  thread_t * getThreadInfoByIndex(int index) {
     return &_threads[index];
   }
 
@@ -160,8 +163,9 @@ public:
 
   // Allocate a thread index under the protection of global lock
   int allocThreadIndex(void) {
-		int index = atomic_increment_and_return(&_threadIndex);
-		int alivethreads = atomic_increment_and_return(&_aliveThreads);
+		global_lock();
+		int index = _threadIndex++;
+		int alivethreads = _aliveThreads++;
 
 		fprintf(stderr, "allocThreadIndex in the beginning, with index %d alivethread %d\n", index, alivethreads);
 		// Check whether we have created too many threads or there are too many alive threads now.
@@ -171,12 +175,14 @@ public:
     } 
 
 		// Initialize 
-    thread_t * thread = getThreadInfo(index);
+    thread_t * thread = getThreadInfoByIndex(index);
 		thread->ptid = gettid();
 		thread->index = index;
 		thread->latency = 0;
 		thread->accesses = 0;
 		start(&thread->startTime);
+
+		fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
 
 		// Now find one available heapid for this thread.
 		thread->heapid = allocHeapId();
@@ -188,11 +194,13 @@ public:
 		}
  
 		if(_predPerfImprovement != true) {
+			global_unlock();
 		//	fprintf(stderr, "RETURN INVALID index %d\n", index);
 			return index;
 		}
 
 		// If alivethreads is 1, we are creating new threads now.
+		fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
 		if(alivethreads == 0) {
 			// We need to save the starting time
 			startThreadLevelInfo(index);
@@ -226,14 +234,14 @@ public:
 			thread->pindex = getThreadIndex();
 		}
 
-		fprintf(stderr, "allocThreadIndex in the end, with index %d\n", index);
+		global_unlock();
     
     return index; 
   }
 
 	// How we can get the parent's runtime on the last epoch?
 	unsigned long getParentRuntime(int index) {
-		thread_t *thread = getThreadInfo(index);
+		thread_t *thread = getThreadInfoByIndex(index);
 
 		return thread->actualRuntime;
 	}
@@ -247,7 +255,7 @@ public:
 
     // Allocate a global thread index for current thread.
     tindex = allocThreadIndex();
-    thread_t * children = getThreadInfo(tindex);
+    thread_t * children = getThreadInfoByIndex(tindex);
     
     children->startRoutine = fn;
     children->startArg = arg;
@@ -257,6 +265,22 @@ public:
     return result;
   }      
 
+
+	int thread_join(pthread_t thread, void **retval)  {
+		int ret;
+		thread_t * thisThread;
+
+		
+		ret = WRAP(pthread_join(thread, retval));
+
+		if(ret == 0) {
+			// Finding out this thread.
+			thisThread = getThreadInfoByTid(thread);
+			markThreadExit(thisThread);
+		}
+
+		return ret;
+	}
 
   // @Global entry of all entry function.
   static void * startThread(void * arg) {
@@ -275,9 +299,6 @@ public:
 		// Get the stop time.
 		current->actualRuntime = elapsed2ms(stop(&current->startTime, NULL));
  
-    // Decrease the alive threads
-    xthread::getInstance().markThreadExit(current);
-    
     return result;
   }
 	
@@ -292,7 +313,7 @@ public:
     while(true) {
 
 			// Get the latency of all active threads. 
-      thread = getThreadInfo(index);
+      thread = getThreadInfoByIndex(index);
 			latency += thread->latency;				        
 
 			index++;
@@ -323,7 +344,7 @@ public:
     while(true) {
 
 			// Get the latency of all active threads. 
-      thread = getThreadInfo(index);
+      thread = getThreadInfoByIndex(index);
 			accesses += thread->accesses;				        
 
 			index++;
@@ -359,7 +380,6 @@ private:
 	int allocHeapId(void) {
 		int heapid;
 
-    global_lock();
 		while(true) {
 			if(_HeapAvailable[_heapid] == true) {
 				heapid = _heapid;
@@ -370,7 +390,6 @@ private:
 			_heapid = (_heapid+1)%xdefines::NUM_HEAPS;
 		}
 	
-    global_unlock();
 		return heapid;
 	}
 
@@ -402,7 +421,7 @@ private:
 		}
 
 		// Release the heap id for this thread.
-		releaseHeap(current->heapid);
+		releaseHeap(thread->heapid);
 
     global_unlock();
   }

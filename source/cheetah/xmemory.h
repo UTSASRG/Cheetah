@@ -411,12 +411,12 @@ public:
 //	 		PRERR("the address seems not right. It should not be larger than %lx\n", MAX_USER_SPACE);
      	return;
     }
+		return;
 	
-		//fprintf(stderr, "in xmemory: before updateThreadLatency, latency %ld\n", latency);	
+		fprintf(stderr, "in xmemory: before updateThreadLatency, latency %ld\n", latency);	
 		updateThreadLatency(latency);
 
-		// If access occurs when there is only one thread, 
-		// We don't actually track the memory access.
+		// We don't actually track the memory access when there is only one thread.
 		if(!_isMultithreading) {
 			return;
 		}

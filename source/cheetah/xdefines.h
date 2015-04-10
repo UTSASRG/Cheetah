@@ -136,7 +136,7 @@ extern "C"
 	inline void updateThreadLatency(unsigned long latency) {
 		current->latency += latency;
 		current->accesses += 1;
-//		fprintf(stderr, "Updating THREAD%d: latency %lx now %lx\n", current->tid, latency, current->latency);
+		fprintf(stderr, "Updating THREAD%d: latency %lx now %lx\n", current->tid, latency, current->latency);
 	}
 
   enum { USER_HEAP_BASE     = 0x40000000 }; // 1G

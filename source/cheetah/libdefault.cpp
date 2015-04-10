@@ -136,5 +136,11 @@ extern "C" {
   {
      return xthread::getInstance().thread_create(tid, attr, start_routine, arg);
   }
+
+	// Intercept the pthread_join function. Thus, 
+	// we are able to know that how many threads have exited.
+	int pthread_join(pthread_t thread, void **retval) {
+     return xthread::getInstance().thread_join(thread, retval);
+	}
 };
 
