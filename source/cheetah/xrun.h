@@ -65,10 +65,10 @@ public:
 		installSignalHandler();
     InternalHeap::getInstance().initialize();
 
-		fprintf(stderr, "xrun initialize before xthread initialize\n");
+//		fprintf(stderr, "xrun initialize before xthread initialize\n");
 		xthread::getInstance().initialize();
 
-		fprintf(stderr, "xrun initialize before xmemory initialize\n");
+//		fprintf(stderr, "xrun initialize before xmemory initialize\n");
     // Initialize the memory (install the memory handler)
     _memory.initialize();
   }

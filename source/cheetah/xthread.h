@@ -101,7 +101,7 @@ public:
   }
 
 	void insertThreadMap(pthread_t tid, thread_t * thread) {
-		fprintf(stderr, "insertThreadMap tid %ld\n", tid);
+	//	fprintf(stderr, "insertThreadMap tid %ld\n", tid);
 		threadmap::getInstance().insertThread(tid, thread);
 	}
 
@@ -168,7 +168,7 @@ public:
 		int index = _threadIndex++;
 		int alivethreads = _aliveThreads++;
 
-		fprintf(stderr, "allocThreadIndex in the beginning, with index %d alivethread %d\n", index, alivethreads);
+	//	fprintf(stderr, "allocThreadIndex in the beginning, with index %d alivethread %d\n", index, alivethreads);
 		// Check whether we have created too many threads or there are too many alive threads now.
     if(index >= xdefines::MAX_THREADS || alivethreads >= xdefines::MAX_ALIVE_THREADS) {
       fprintf(stderr, "Set xdefines::MAX_THREADS to larger. _alivethreads %ld totalthreads %ld maximum alive threads %d", _aliveThreads, _threadIndex, xdefines::MAX_ALIVE_THREADS);
@@ -183,7 +183,7 @@ public:
 		thread->accesses = 0;
 		start(&thread->startTime);
 
-		fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
+	//	fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
 
 		// Now find one available heapid for this thread.
 		thread->heapid = allocHeapId();
@@ -201,7 +201,7 @@ public:
 		}
 
 		// If alivethreads is 1, we are creating new threads now.
-		fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
+	//	fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
 		if(alivethreads == 0) {
 			// We need to save the starting time
 			startThreadLevelInfo(index);
@@ -281,7 +281,7 @@ public:
 			// Finding out this thread.
 			thisThread = getThreadInfoByTid(thread);
 
-			fprintf(stderr, "thread_join on tid %ld and this Thread %p\n", thread, thisThread);
+//			fprintf(stderr, "thread_join on tid %ld and this Thread %p\n", thread, thisThread);
 			markThreadExit(thisThread);
 		}
 
@@ -304,7 +304,9 @@ public:
 
 		// Get the stop time.
 		current->actualRuntime = elapsed2ms(stop(&current->startTime, NULL));
- 
+
+//		fprintf(stderr, "runtime of thread %ld %ld\n", current->self, current->actualRuntime);
+  
     return result;
   }
 	
@@ -406,7 +408,7 @@ private:
  
 	// Now we will mark the exit of a thread 
   void markThreadExit(thread_t * thread) {
-  //  fprintf(stderr, "remove thread %p with thread index %d\n", thread, thread->index);
+  // fprintf(stderr, "remove thread %p with thread index %d\n", thread, thread->index);
     global_lock();
 
     --_aliveThreads;
