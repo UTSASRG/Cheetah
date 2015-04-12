@@ -411,15 +411,17 @@ public:
 //	 		PRERR("the address seems not right. It should not be larger than %lx\n", MAX_USER_SPACE);
      	return;
     }
-		return;
 	
-		fprintf(stderr, "in xmemory: before updateThreadLatency, latency %ld\n", latency);	
+//		fprintf(stderr, "in xmemory: before updateThreadLatency, latency %ld\n", latency);	
 		updateThreadLatency(latency);
 
+	//	fprintf(stderr, "actually check handleAccess at line %d is_Multithreading %d \n", __LINE__, _isMultithreading);
 		// We don't actually track the memory access when there is only one thread.
 		if(!_isMultithreading) {
 			return;
 		}
+
+	//	fprintf(stderr, "handleAccess at line %d tid %d\n", __LINE__, tid);
 
     // We only care those acesses of global and heap.
     unsigned long index = getCachelineIndex(addr);
@@ -443,6 +445,7 @@ public:
 		// the number of writes on this cache line.
     if(totalWrites < xdefines::THRESHOLD_TRACK_DETAILS) {
   		//fprintf(stderr, "totalWrites is %ld\n", totalWrites); 
+	//	fprintf(stderr, "actually check handleAccess at line %d\n", __LINE__);
 	   // Only update writes
       if(type == E_ACCESS_WRITE) {
         if(atomic_increment_and_return(status) == xdefines::THRESHOLD_TRACK_DETAILS-1) {

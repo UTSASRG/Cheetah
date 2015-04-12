@@ -64,7 +64,7 @@ public:
     _position  = (char *)_start;
     _remaining = startsize;
     _magic     = 0xCAFEBABE;
-    fprintf(stderr, "XHEAP:ptr %p start %p end %p\n", ptr, _start, _end);
+    //fprintf(stderr, "XHEAP:ptr %p start %p end %p\n", ptr, _start, _end);
     return ptr;
     // PRDBG("XHEAP:_start at %p end at %p mutexlock %p\n", &_start, &_end, _lock);
   }

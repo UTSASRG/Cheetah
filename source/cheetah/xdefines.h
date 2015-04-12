@@ -80,8 +80,11 @@ extern "C"
 		// Who is my parent;
 		int       pindex;
 		pid_t     ptid;
+
+		// Who is my children in this phase;
+		int childBeginIndex;
+		int childEndIndex;
  
-//    pid_t     tid; // Current process id of this thread.
     pthread_t self; // Results of pthread_self
 		char outputBuf[LOG_SIZE];	
 
@@ -93,6 +96,7 @@ extern "C"
 		struct timeinfo startTime;
 		unsigned long actualRuntime;
 		unsigned long parentRuntime;
+		unsigned long phaseIndex; // In which phase
 
 		unsigned long latency;
 		unsigned long accesses;
@@ -136,7 +140,7 @@ extern "C"
 	inline void updateThreadLatency(unsigned long latency) {
 		current->latency += latency;
 		current->accesses += 1;
-		fprintf(stderr, "Updating THREAD%d: latency %lx now %lx\n", current->tid, latency, current->latency);
+//		fprintf(stderr, "Updating THREAD%d: latency %lx now %lx\n", current->tid, latency, current->latency);
 	}
 
   enum { USER_HEAP_BASE     = 0x40000000 }; // 1G

@@ -135,7 +135,7 @@ public:
     unsigned long i;
     for(i = 0; i < xdefines::WORDS_PER_CACHE_LINE; i++) {
       if(_words[i].writes > xdefines::THRESHOLD_HOT_ACCESSES || _words[i].reads > xdefines::THRESHOLD_HOT_ACCESSES) { 
-        fprintf(stderr, "Word %ld: address %lx reads %x writes %x thread %x\n", i, (unsigned long)_cacheStart + i * xdefines::WORD_SIZE, _words[i].reads, _words[i].writes, _words[i].tid);
+        fprintf(stderr, "Word %ld: address %lx reads %x writes %x thread %d\n", i, (unsigned long)_cacheStart + i * xdefines::WORD_SIZE, _words[i].reads, _words[i].writes, _words[i].tid);
       }
     } 
 
@@ -171,7 +171,7 @@ public:
 		atomic_add(1, (volatile unsigned long *)&_accesses);
 		atomic_add(latency, (volatile unsigned long *)&_latency);
 
-		fprintf(stderr, "%p (Thread%d): access %lx latency %lx current latency %lx\n", addr, getThreadIndex(), _accesses, _latency, latency);
+//		fprintf(stderr, "%p (Thread%d): access %lx latency %lx current latency %lx\n", addr, getThreadIndex(), _accesses, _latency, latency);
  
     // Check whether we need to sample this lines accesses now.
     int wordindex = getCacheOffset((size_t)addr);

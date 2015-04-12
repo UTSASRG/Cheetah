@@ -15,10 +15,18 @@ public:
   unsigned long words;
   long invalidations;
   unsigned long totalWrites;
-  unsigned long totalAccesses;
   unsigned long unitlength;
   unsigned long totallength;
-	unsigned long totalLatency;
+  unsigned long totalFSAccesses;
+	unsigned long totalFSCycles;
+
+	// Find information of involving threads.
+	pid_t threads[xdefines::MAX_ALIVE_THREADS];
+	unsigned long totalThreads;
+	unsigned long totalThreadsAccesses;
+	unsigned long totalThreadsCycles;
+	unsigned long longestThreadRuntime;
+
   unsigned long * start;
   unsigned long * stop;
   void * winfo;

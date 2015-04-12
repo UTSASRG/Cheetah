@@ -24,6 +24,7 @@
 #include "elfinfo.h"
 #include "callsite.h"
 #include "cachetrack.h"
+#include "xthread.h"
 
 class report {
   enum { MAXBUFSIZE = 4096 };
@@ -45,7 +46,7 @@ public:
     assert(end != NULL);
     assert(cacheWrites != NULL);
 		
- //   fprintf(stderr, "reporting start %p end %p cacheWrites %p cacheTrackings %p totalLatency %ld totalAccesses %ld\n", start, end, cacheWrites, cacheTrackings, latency, accesses);
+ //   fprintf(stderr, "reporting start %p end %p cacheWrites %p cacheTrackings %p totalFSCycles %ld totalFSAccesses %ld\n", start, end, cacheWrites, cacheTrackings, latency, accesses);
 
     _isHeap = isHeap;
     _start = (char *)start;
@@ -229,8 +230,8 @@ public:
     object->winfo = NULL;
     object->invalidations = 0;
     object->totalWrites = 0;
-    object->totalAccesses = 0;
-    object->totalLatency = 0;
+    object->totalFSAccesses = 0;
+    object->totalFSCycles = 0;
 
     assert(firstOffset < CACHE_LINE_SIZE);
 
@@ -289,8 +290,8 @@ public:
           object->invalidations += track->getInvalidations();
         }
 
-				object->totalLatency += track->getLatency();
-        object->totalAccesses += track->getAccesses();
+				object->totalFSCycles += track->getLatency();
+        object->totalFSAccesses += track->getAccesses();
       }
    
       
@@ -300,7 +301,61 @@ public:
     if(winfo) {
       object->winfo = (void *)winfo;
     }
-   
+ 
+		// Get the threads related information.
+		unsigned long checkedWords = 0;
+
+		// Cleaning up this threads.
+		memset(&object->threads, 0, xdefines::MAX_ALIVE_THREADS * sizeof(pid_t));
+		object->totalThreadsAccesses = 0;
+		object->totalThreadsCycles = 0;
+		object->totalThreads = 0;
+		object->longestThreadRuntime = 0;
+		
+		while(winfo) {
+			pid_t tid = winfo->tid;
+			bool inside = false;
+			
+			// Check whether this tid is recorded or not.
+			for(int i = 0; i < object->totalThreads; i++) {
+				if(tid == object->threads[i]) {
+					inside = true;
+					break;
+				}
+			} 
+
+			if(inside == false && (tid != cachetrack::WORD_THREAD_SHARED)) {
+				// Finding thread_t of this thread. 
+				thread_t * thisThread = xthread::getInstance().getThreadInfoByTid(tid);
+
+				if(thisThread != NULL) {
+					// If this thread is not inside, record this threads.
+					object->threads[object->totalThreads] = tid;
+		
+					fprintf(stderr, "tid is %d\n", tid);	
+					object->totalThreadsAccesses += thisThread->accesses;
+					object->totalThreadsCycles += thisThread->latency;
+				
+					if(object->longestThreadRuntime < thisThread->actualRuntime) {
+						object->longestThreadRuntime = thisThread->actualRuntime;
+					} 
+
+					object->totalThreads++;
+				}	
+			}
+
+			// We will check next word
+			checkedWords++;
+
+			// We will stop if we have traverse all words.
+			if(checkedWords == object->words) {
+				break;
+			}
+			
+			// Check next word
+			winfo++;
+		}	
+
     return hasFS; 
   }
 
@@ -457,7 +512,8 @@ public:
 
 		// We should check the latency of an object
     fprintf(stderr, "filename %s\n", _curFilename);
-    fprintf(stderr, "FALSE SHARING: start %p end %p (with size %lx). Accesses %lx invalidations %lx writes %lx total latency %lx. ", object->start, object->stop, object->unitlength, object->totalAccesses, object->invalidations, object->totalWrites, object->totalLatency);
+    fprintf(stderr, "FALSE SHARING: start %p end %p (with size %lx). Accesses %lx invalidations %lx writes %lx total latency %lx.\n", object->start, object->stop, object->unitlength, object->totalFSAccesses, object->invalidations, object->totalWrites, object->totalFSCycles);
+    fprintf(stderr, "Latency information: totalThreads %ld totalThreadsAccesses %lx totalThreadsCycles %lx longestRuntime %ld\n\n", object->totalThreads, object->totalThreadsAccesses, object->totalThreadsCycles, object->longestThreadRuntime);
     if(object->isHeapObject) { 
     fprintf(stderr, "It is a HEAP OBJECT with callsite stack:\n");
       for(int i = 0; i < CALL_SITE_DEPTH; i++) {

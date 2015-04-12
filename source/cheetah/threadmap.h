@@ -21,7 +21,7 @@
 
 /*
  * @file   threadmap.h
- * @brief  Mapping between pthread_t and internal thread index.
+ * @brief  Mapping between tid and internal thread index.
  *         We also keep the thread running time on each entry.
  *         For different thread entry, we can also keep track of the address of this mapping.
  * @author Tongping Liu <http://www.cs.umass.edu/~tonyliu>
@@ -52,32 +52,32 @@ public:
   }
  
   void initialize() {
-    _xmap.initialize(HashFuncs::hashAddr, HashFuncs::compareAddr, xdefines::MAX_THREADS);
+    _xmap.initialize(HashFuncs::hashInt, HashFuncs::compareInt, xdefines::MAX_THREADS);
   } 
 
-  thread_t * getThreadInfo(pthread_t tid) {
+  thread_t * getThreadInfo(pid_t tid) {
     thread_t * info = NULL;
-    _xmap.find((void *)tid, sizeof(void *), &info);
+    _xmap.find(tid, sizeof(pid_t), &info);
     return info;
   } 
  
-  void deleteThreadMap(pthread_t tid) {
-    _xmap.erase((void *)tid, sizeof(void*));
+  void deleteThreadMap(pid_t tid) {
+    _xmap.erase(tid, sizeof(pid_t));
   }
 
-  void insertThread(pthread_t tid, thread_t * thread) {
+  void insertThread(pid_t tid, thread_t * thread) {
     // Malloc 
-    _xmap.insert((void *)tid, sizeof(void *), thread);
+    _xmap.insert(tid, sizeof(pid_t), thread);
   }
 
-  void removeThread(pthread_t tid) {
+  void removeThread(pid_t tid) {
     // First, remove thread from the threadmap.
     deleteThreadMap(tid);
   }
 
 private:
   // We are maintainning a private hash map for each thread.
-  typedef HashMap<void *, thread_t *, spinlock, InternalHeapAllocator> threadHashMap;
+  typedef HashMap<pid_t, thread_t *, spinlock, InternalHeapAllocator> threadHashMap;
 
   // The  variables map shared by all threads
   threadHashMap _xmap;

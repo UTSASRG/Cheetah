@@ -100,8 +100,8 @@ public:
     initInitialThread();
   }
 
-	void insertThreadMap(pthread_t tid, thread_t * thread) {
-	//	fprintf(stderr, "insertThreadMap tid %ld\n", tid);
+	void insertThreadMap(pid_t tid, thread_t * thread) {
+		fprintf(stderr, "insertThreadMap tid %d\n", tid);
 		threadmap::getInstance().insertThread(tid, thread);
 	}
 
@@ -120,14 +120,19 @@ public:
   // Initialize the first threadd
   void initInitialThread(void) {
     int tindex;
-    
+
+		// We know that we will going to execute     
+    current = getThreadInfoByIndex(0);
+
      // Allocate a global thread index for current thread.
     tindex = allocThreadIndex( );
 
+		assert(tindex == 0);
+
     // Get corresponding thread_t structure.
-    current  = getThreadInfoByIndex(tindex);
     current->self  = pthread_self();
-		insertThreadMap(current->self, current);
+    current->tid  = gettid();
+		insertThreadMap(current->tid, current);
   }
 
   thread_t * getThreadInfoByIndex(int index) {
@@ -194,12 +199,6 @@ public:
 			_predPerfImprovement = false;
 		}
  
-		if(_predPerfImprovement != true) {
-			global_unlock();
-		//	fprintf(stderr, "RETURN INVALID index %d\n", index);
-			return index;
-		}
-
 		// If alivethreads is 1, we are creating new threads now.
 	//	fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
 		if(alivethreads == 0) {
@@ -210,7 +209,11 @@ public:
 			// Now we are trying to create more threads
 			// Serial phase is ended now.
 			_isMultithreading = true;
-		
+	
+			current->childBeginIndex = index;
+			current->childEndIndex = index;
+	
+			fprintf(stderr, "Setting multithreading!!!!!\n");
 			// Now we get the elapse of the serial phase	
 			stopThreadLevelInfo();
 			
@@ -222,6 +225,9 @@ public:
 			// We don't know how many threads are we going to create.
 			// thus, we simply update the endindex now.
 			updateThreadLevelInfo(index);
+			if(index > current->childEndIndex) {
+				current->childEndIndex = index;
+			}
 		}
 
 		//fprintf(stderr, "threadindex %d\n", _threadIndex);
@@ -263,12 +269,38 @@ public:
 
     result =  WRAP(pthread_create)(tid, attr, startThread, (void *)children);
 		
-		// Insert the child thread into the threadmap
-		insertThreadMap(*tid, children);
 
     return result;
   }      
 
+	thread_t * getChildThreadStruct( pthread_t thread) {
+		thread_t * thisThread = NULL;
+
+		int index = current->childBeginIndex;
+
+		while(true) {
+			thisThread = &_threads[index];
+
+			index++;
+
+			// We find the child
+			if(thisThread->self == thread) {
+				current->childBeginIndex = index;
+				break;
+			}
+			else {
+				if(index <= current->childEndIndex) {
+					continue;
+				}
+				else {
+					printf("Can't find the thread_t structure with specifid thread\n");
+					abort();
+				}
+			}	
+		}
+
+		return thisThread;
+	}
 
 	int thread_join(pthread_t thread, void **retval)  {
 		int ret;
@@ -278,10 +310,10 @@ public:
 
 		if(ret == 0) {
 			thread_t * thisThread;
-			// Finding out this thread.
-			thisThread = getThreadInfoByTid(thread);
 
-//			fprintf(stderr, "thread_join on tid %ld and this Thread %p\n", thread, thisThread);
+			// Finding out the thread with this pthread_t 
+			thisThread = getChildThreadStruct(thread);
+
 			markThreadExit(thisThread);
 		}
 
@@ -298,7 +330,12 @@ public:
     startIBS(current->index);
 #endif
     current->self = pthread_self();
+		current->tid = gettid();
 
+		// Insert myself into the thread map.
+		xthread::getInstance().insertThreadMap(current->tid, current);
+		//insertThreadMap(current->tid, current);
+		
     // from the TLS storage.
     result = current->startRoutine(current->startArg);
 

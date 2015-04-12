@@ -49,7 +49,7 @@ public:
 
     pthread_mutex_init(&_mutex, NULL);
 
-		fprintf(stderr, "Internal malloc ptr %p\n", ptr);
+//		fprintf(stderr, "Internal malloc ptr %p\n", ptr);
     // Initialize the following content according the values of xpersist class.
     base = (char *)((intptr_t)ptr + metasize);
     _start      = base;
