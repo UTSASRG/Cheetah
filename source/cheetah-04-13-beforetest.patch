@@ -1,0 +1,2419 @@
+diff -Nur cheetah-orig/cacheinfo.h cheetah/cacheinfo.h
+--- cheetah-orig/cacheinfo.h	2015-03-27 10:09:03.438360517 -0500
++++ cheetah/cacheinfo.h	2015-04-13 11:35:26.577544267 -0500
+@@ -52,7 +52,6 @@
+ public:
+   cacheinfo() 
+   {
+-
+   }
+   
+   ~cacheinfo (void) {
+@@ -82,6 +81,7 @@
+       if(_history.updateHistory(tid, type)) {
+         _invalidations++;
+       }
++			
+     }
+   }
+ 
+diff -Nur cheetah-orig/cachetrack.h cheetah/cachetrack.h
+--- cheetah-orig/cachetrack.h	2015-03-27 10:09:03.438360517 -0500
++++ cheetah/cachetrack.h	2015-04-13 11:35:26.581543907 -0500
+@@ -74,7 +74,7 @@
+     _cacheStart = start;
+     _thisCache.initialize((void *)_cacheStart, CACHE_LINE_SIZE);
+     _writes = writes; 
+-    _accesses = 0;
++    _accesses = _writes;
+ 
+     // Set the words information.
+     memset(&_words[0], 0, sizeof(struct wordinfo) * xdefines::WORDS_PER_CACHE_LINE); 
+@@ -117,6 +117,10 @@
+   unsigned long getAccesses(void) {
+     return _accesses;
+   }
++	
++	unsigned long getLatency(void) {
++		return _latency;
++	}
+ 
+   long getInvalidations(void) {
+     long invalidations;
+@@ -131,7 +135,7 @@
+     unsigned long i;
+     for(i = 0; i < xdefines::WORDS_PER_CACHE_LINE; i++) {
+       if(_words[i].writes > xdefines::THRESHOLD_HOT_ACCESSES || _words[i].reads > xdefines::THRESHOLD_HOT_ACCESSES) { 
+-//        fprintf(stderr, "Word %ld: address %lx reads %x writes %x thread %x\n", i, (unsigned long)_cacheStart + i * xdefines::WORD_SIZE, _words[i].reads, _words[i].writes, _words[i].tid);
++        fprintf(stderr, "Word %ld: address %lx reads %x writes %x thread %d\n", i, (unsigned long)_cacheStart + i * xdefines::WORD_SIZE, _words[i].reads, _words[i].writes, _words[i].tid);
+       }
+     } 
+ 
+@@ -162,8 +166,12 @@
+ 
+   // Main function to handle each access for a potential cache line (writes larger than 
+   // a pre-defined threshold).  
+-  void handleAccess(pid_t tid, void * addr, int bytes, eAccessType type) {
+-    unsigned long accessNum = _accesses;
++  void handleAccess(pid_t tid, void * addr, int bytes, eAccessType type, unsigned long latency) {
++		// Updating the number of accesses and the latency information
++		atomic_add(1, (volatile unsigned long *)&_accesses);
++		atomic_add(latency, (volatile unsigned long *)&_latency);
++
++//		fprintf(stderr, "%p (Thread%d): access %lx latency %lx current latency %lx\n", addr, getThreadIndex(), _accesses, _latency, latency);
+  
+     // Check whether we need to sample this lines accesses now.
+     int wordindex = getCacheOffset((size_t)addr);
+@@ -202,6 +210,7 @@
+ 
+   // How many writes on this cache line.
+   unsigned long  _writes;
++	unsigned long  _latency;
+ 
+   cacheinfo      _thisCache;
+   size_t         _cacheStart;
+diff -Nur cheetah-orig/finetime.c cheetah/finetime.c
+--- cheetah-orig/finetime.c	2015-03-27 10:09:03.438360517 -0500
++++ cheetah/finetime.c	2015-04-13 11:35:26.581543907 -0500
+@@ -23,9 +23,12 @@
+ 
+ #include <time.h>
+ #include <limits.h>
++#include <stdio.h>
++#include <stdlib.h>
+ 
+ #include "finetime.h"
+-double cpu_freq = 2327507.08008; // FIX ME What?
++double cpu_freq = 1200781;
++// 2327507.08008; // FIX ME What?
+ 
+ void __get_time(struct timeinfo * ti)
+ {
+@@ -43,10 +46,9 @@
+ {
+ 	double elapsed = 0.0;
+ 
+-	elapsed = (double)(stop->low - start->low) + (double)(UINT_MAX)*(double)(stop->high - start->high);
+-	if (stop->low < start->low)
+-		elapsed -= (double)UINT_MAX;
+-
++	elapsed = (double)(stop->low) + (double)(UINT_MAX)*(double)(stop->high - start->high) - (double)start->low;
++	//if (stop->low < start->low)
++	//	elapsed -= (double)UINT_MAX;
+ 	return elapsed;
+ }
+ 
+@@ -99,5 +101,8 @@
+ 	unsigned long ms;
+ //	ms =(unsigned long)(elapsed*1000000.0/cpu_freq);
+ 	ms =(unsigned long)(elapsed/cpu_freq);
++	if(ms > 5000) {
++		while(1) ;
++	}
+ 	return(ms);
+ }
+diff -Nur cheetah-orig/hashfuncs.h cheetah/hashfuncs.h
+--- cheetah-orig/hashfuncs.h	1969-12-31 18:00:00.000000000 -0600
++++ cheetah/hashfuncs.h	2015-04-13 11:35:26.577544267 -0500
+@@ -0,0 +1,84 @@
++
++// -*- C++ -*-
++
++/*
++  Copyright (c) 2012, University of Massachusetts Amherst.
++
++  This program is free software; you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation; either version 2 of the License, or
++  (at your option) any later version.
++  
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++  
++  You should have received a copy of the GNU General Public License
++  along with this program; if not, write to the Free Software
++  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++
++*/
++
++/*
++ * @file   hashfuncs.h
++ * @brief  Some functions related to hash table.
++ * @author Tongping Liu <http://www.cs.umass.edu/~tonyliu>
++ */
++#ifndef __HASHFUNCS_H__
++#define __HASHFUNCS_H__
++
++#include "list.h"
++
++class HashFuncs {
++public:
++  // The following functions are stole from stl library
++  static size_t hashString(const void * start, size_t len) {
++    unsigned long __h = 0;
++    char * __s = (char *)start;
++    int i;
++
++    for ( ; i <= len; i++, ++__s)
++      __h = 5*__h + *__s;
++
++    return size_t(__h);
++  }
++
++  static size_t hashInt(const int x, size_t len) {
++    return x;
++  }  
++
++  static size_t hashLong(long x, size_t len) {
++    return x;
++  }
++
++  static size_t hashUnsignedlong(unsigned long x, size_t len) {
++    return x;
++  }
++
++  static size_t hashAddr(void * addr, size_t len) {
++    unsigned long key = (unsigned long)addr;
++    key ^= (key << 15) ^ 0xcd7dcd7d;
++    key ^= (key >> 10);
++    key ^= (key <<  3);
++    key ^= (key >>  6);
++    key ^= (key <<  2) + (key << 14);
++    key ^= (key >> 16);
++    return key;
++  }
++
++  static bool compareAddr(void * addr1, void * addr2, size_t len) {
++    return addr1 == addr2;
++  }
++
++  static bool compareInt(int var1, int var2, size_t len) {
++    return var1 == var2;
++  }
++
++  static bool compareString(const char * str1, const char * str2, size_t len) {
++    return strncmp(str1, str2, len) == 0;
++  }
++  
++};
++
++#endif
+diff -Nur cheetah-orig/hashmap.h cheetah/hashmap.h
+--- cheetah-orig/hashmap.h	1969-12-31 18:00:00.000000000 -0600
++++ cheetah/hashmap.h	2015-04-13 11:35:26.577544267 -0500
+@@ -0,0 +1,406 @@
++
++// -*- C++ -*-
++
++/*
++  Copyright (c) 2012, University of Massachusetts Amherst.
++
++  This program is free software; you can redistribute it and/or modify
++  it under the terms of the GNU General Public License as published by
++  the Free Software Foundation; either version 2 of the License, or
++  (at your option) any later version.
++  
++  This program is distributed in the hope that it will be useful,
++  but WITHOUT ANY WARRANTY; without even the implied warranty of
++  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  GNU General Public License for more details.
++  
++  You should have received a copy of the GNU General Public License
++  along with this program; if not, write to the Free Software
++  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++
++*/
++
++/*
++ * @file   hashtable.h
++ * @brief  Management about hash table.
++ * @author Tongping Liu <http://www.cs.umass.edu/~tonyliu>
++ *         The original design is from kulesh [squiggly] isis.poly.edu
++ */
++#ifndef __HASHTABLE_H__
++#define __HASHTABLE_H__
++#include <iostream>
++#include <fstream>
++#include "list.h"
++
++using namespace std;
++template <
++    class KeyType, // What is the key? A long or string
++    class ValueType, // What is the value there?
++    class LockType,
++    class SourceHeap > // Where to call malloc
++      
++class HashMap {
++
++  // Each entry has a lock.
++  struct HashEntry {
++  	list_t      list;
++    // Each entry has a separate lock 
++    LockType    lock;  
++    size_t      count; // How many _entries in this list
++
++    void initialize() {
++      count = 0;
++      listInit(&list);
++      LockInit();  
++    } 
++   
++    void Lock() {
++      lock.lock();
++    }
++    void Unlock() {
++      lock.unlock();
++    }
++    void LockInit() {
++      lock.init();
++    }
++
++    void * getFirstEntry() {
++      return (void *)list.next;
++    }
++
++  };
++
++  struct Entry {
++  	list_t      list;
++    KeyType     key;
++    size_t      keylen;
++    ValueType   value;
++
++    void initialize(KeyType ikey = 0, int ikeylen = 0, ValueType ivalue = 0 ) {
++      listInit(&list);
++      key = ikey;
++      keylen = ikeylen;
++      value = ivalue;
++    }
++
++    void erase() {
++      listRemoveNode(&list);
++    }
++    
++    struct Entry * nextEntry() {
++      return (struct Entry *)list.next;
++    }
++
++    ValueType getValue() {
++      return value;
++    }
++
++    KeyType getKey() {
++      return key;
++    }
++  };
++
++  bool _initialized;
++	struct HashEntry *_entries;
++	size_t _buckets; // How many buckets in total
++	size_t _bucketsUsed; // How many buckets in total
++
++typedef bool (*keycmpFuncPtr) (const KeyType, const KeyType, size_t);
++typedef size_t (*hashFuncPtr) (const KeyType, size_t);
++	keycmpFuncPtr _keycmp;
++  hashFuncPtr   _hashfunc;
++
++public:
++
++  HashMap() 
++  : _initialized(false)
++  {
++//    printf("RESET hashmap at %p\n", &_initialized);
++  }
++
++  void initialize(hashFuncPtr hfunc, keycmpFuncPtr kcmp, const size_t size = 4096) 
++  {
++    _entries = NULL;
++    _bucketsUsed = 0;
++    _buckets = size;
++
++    if(hfunc == NULL || kcmp == NULL) {
++      PRINF("Hashfunc or kcmp should not be null\n");
++      abort();
++    }
++
++    // Initialize those functions.
++    _hashfunc = hfunc;
++    _keycmp = kcmp;
++ 
++    // Allocated predefined size.
++    _entries = (struct HashEntry *)SourceHeap::malloc(size * sizeof(struct HashEntry));
++//    PRINF("hashmap initialization at %p pid %d index %d\n", &_initialized,getpid(), getThreadIndex());
++//    PRINF("hashmap initialization _entries %p\n", _entries);
++
++    // Initialize all of these _entries. 
++    struct HashEntry * entry;
++    for(size_t i = 0; i < size; i++) {
++      entry = getHashEntry(i);
++      entry->initialize();
++    }
++    _initialized = true;
++  }
++
++  inline struct HashEntry * getHashEntry(size_t index) {
++    if(index < _buckets) {
++      return &_entries[index];
++    }
++    else {
++      return NULL;
++    }
++  }
++
++  inline size_t hashIndex(const KeyType & key, size_t keylen) {
++    size_t hkey = _hashfunc(key, keylen);
++    return hkey % _buckets; 
++  }
++
++  // Look up whether an entry is existing or not.
++  // If existing, return true. *value should be carried specific value for this key.
++  // Otherwise, return false.
++  bool find(const KeyType & key, size_t keylen, ValueType *value) {
++    assert(_initialized == true);
++    size_t hindex = hashIndex(key, keylen);
++    struct HashEntry * first = getHashEntry(hindex);
++    struct Entry * entry = getEntry(first, key, keylen);
++    bool isFound = false;
++
++    if(entry) {    
++      *value = entry->value;
++      isFound = true;
++    }
++
++    return isFound; 
++  } 
++
++  void insert(const KeyType & key, size_t keylen, ValueType value) {
++    if(_initialized != true) {
++      PRINT("process %d index %d: initialized at  %p hashmap is not true\n", getpid(), getThreadIndex(), &_initialized);
++    }
++
++    assert(_initialized == true);
++    size_t hindex = hashIndex(key, keylen);
++    //PRINF("Insert entry:  before inserting\n"); 
++    struct HashEntry * first = getHashEntry(hindex);
++  
++    //PRINF("Insert entry: key %p\n", key); 
++    first->Lock(); 
++    insertEntry(first, key, keylen, value); 
++    first->Unlock(); 
++  }
++
++  // Insert a hash table entry if it is not existing.
++  // If the entry is already existing, return true
++  bool insertIfAbsent(const KeyType & key, size_t keylen, ValueType value) {
++    assert(_initialized == true);
++    size_t hindex = hashIndex(key, keylen);
++    struct HashEntry * first = getHashEntry(hindex);
++    struct Entry * entry;
++    bool isFound = true;
++
++    first->Lock();
++
++    // Check all _entries with the same hindex.
++    entry = getEntry(first, key, keylen);
++    if(!entry) {
++      isFound = false;
++      insertEntry(first, key, keylen, value);
++    }
++
++    first->Unlock();
++
++    return isFound; 
++  } 
++ 
++  // Free an entry with specified 
++  bool erase(const KeyType & key, size_t keylen) {
++    assert(_initialized == true);
++    size_t hindex = hashIndex(key, keylen);
++    struct HashEntry * first = getHashEntry(hindex);
++    struct Entry * entry;
++    bool isFound = false;
++ 
++    first->Lock();
++   
++    entry = getEntry(first, key, keylen);
++
++//    PRINF("Erapse the entry key %p entry %p\n", key, entry);
++    if(entry) {
++      isFound = true;
++
++      // Check whether this entry is the first entry.
++      // Remove this entry if existing.
++      entry->erase();
++
++      SourceHeap::free(entry);
++    }
++
++    first->count--;
++
++    first->Unlock();
++
++    return isFound;
++  }
++
++  // Clear all _entries 
++  void clear() {
++
++
++  }
++
++private:  
++  // Create a new Entry with specified key and value.
++  struct Entry * createNewEntry(const KeyType & key, size_t keylen, ValueType value) {
++    struct Entry * entry  = (struct Entry *)SourceHeap::malloc(sizeof(struct Entry));
++
++    // Initialize this new entry. 
++    entry->initialize(key, keylen, value);
++    return entry;
++  }
++
++  void insertEntry(struct HashEntry * head, const KeyType & key, size_t keylen, ValueType value) {
++    // Check whether the first entry is empty or not.
++    // Create an entry
++    struct Entry * entry = createNewEntry(key, keylen, value);
++    listInsertTail(&entry->list, &head->list);
++    head->count++;
++//		PRINF("insertEntry entry %p at head %p, headcount %ld\n", entry, head, head->count);
++//		PRINF("insertEntry entry %p, entrynext %p, at head %p hear->list %p headlist->next %p\n", entry, entry->list.next, head, &head->list, head->list.next);
++  }
++ 
++  // Search the entry in the corresponding list. 
++  struct Entry * getEntry(struct HashEntry * first, const KeyType & key, size_t keylen) {
++    struct Entry * entry = (struct Entry *)first->getFirstEntry();
++    struct Entry * result = NULL;
++
++    // Check all _entries with the same hindex.
++    int count = first->count;
++    //PRINF("getEntry count is %d\n", count);
++    while(count > 0) {
++      if(entry->keylen == keylen && _keycmp(entry->key, key, keylen)) {
++        result = entry;
++        break;
++      }
++
++      entry = entry->nextEntry();
++      count--;
++    }
++
++    return result;
++  }
++
++public:
++
++  class iterator
++  {
++    friend class HashMap<KeyType, ValueType, LockType, SourceHeap>;
++    struct Entry * _entry;         // Which entry in the current hash entry?
++    size_t _pos;                   // which bucket at the moment? [0, nbucket-1]
++    HashMap * _hashmap;
++
++    public:
++    iterator(struct Entry * ientry = NULL, int ipos = 0, HashMap * imap = NULL) 
++    {
++//      cout << "In default constructor of iterator\n";
++      _pos = ipos;
++      _entry = ientry;
++      _hashmap = imap;
++    }
++
++    ~iterator()
++    {
++    }
++    
++    iterator& operator++(int unused)// in postfix ++
++    {
++  //    cout << "In postfix ++\n";
++      struct HashEntry * hashentry = _hashmap->getHashEntry(_pos);
++
++			PRINF("firstentry %p its next %p hashentry first entry %p\n", _entry, _entry->list.next, hashentry);
++//			PRINF("opertor__, hashentry %p _pos %ld _entry %p, _hashmap %p\n", hashentry, _pos, _entry, _hashmap);
++			PRINF("opertor__, hashentry %p _pos %ld _entry %p, _hashmap %p\n", hashentry, _pos, _entry, _hashmap);
++      // Check whether this entry is the last entry in current hash entry.
++      if(!isListTail(&_entry->list, &hashentry->list)) {
++//				PRINF("****enty->list->next %p, hashentry->list %p hashentry %p hashlist next %p\n", _entry->list.next, &hashentry->list, hashentry, hashentry->list.next);
++//				PRINF("opertor__, hashentry %p _pos %ld _entry %p _entry->list %p, _hashmap %p\n", hashentry, _pos, _entry, &_entry->list, _hashmap);
++        // If not, then we simply get next entry. No need to change pos.
++        _entry = _entry->nextEntry();
++      }
++      else {
++        // Since current list is empty, we must search next hash entry.
++        _pos++;
++        while((hashentry = _hashmap->getHashEntry(_pos)) != NULL) {
++          if(hashentry->count != 0) {
++            // Now we can return it.
++            _entry = (struct Entry *)hashentry->getFirstEntry(); 
++            return *this; 
++          }
++          _pos++; 
++        } 
++        
++        _entry = NULL;
++      }
++        
++      return *this;
++    }
++
++    //iterator& operator -- ();
++    // Iterpreted as a = b is treated as a.operator=(b)
++    iterator& operator=(const iterator & that) {
++      _entry = that._entry;
++      _pos = that._pos;
++      _hashmap = that._hashmap;
++      return *this;
++    } 
++
++    bool operator==(const iterator& that) const
++    { return _entry == that._entry; }
++
++    bool operator != (const iterator& that) const
++    { return _entry != that._entry; }
++
++    ValueType getData() {
++      return _entry->getValue(); 
++    }
++
++    KeyType getkey() {
++      return _entry->getKey();
++    } 
++  };
++
++  // Acquire the first entry of the hash table
++  iterator begin() {
++    size_t pos = 0;
++    struct HashEntry * head = NULL;
++    struct Entry * entry;
++
++		//PRINF("in the beginiing of begin\n");
++    // Get the first non-null entry
++    while(pos < _buckets) {
++      head = getHashEntry(pos);
++			//PRINF("begin, head %p pos %ld head->count %ld\n", head, pos, head->count);
++      if(head->count != 0) {
++        // Now we can return it.
++        entry = (struct Entry *)head->getFirstEntry(); 
++			//	PRINF("In begin() function, head %p, firstentry %p, firstentry next %p\n", head, entry, entry->list.next);
++        return iterator(entry, pos, this); 
++      } 
++      pos++;
++    }
++
++    return end();
++  }
++
++  iterator end() {
++    return iterator(NULL, 0, this); 
++  }
++
++};
++
++#endif
+diff -Nur cheetah-orig/internalheap.h cheetah/internalheap.h
+--- cheetah-orig/internalheap.h	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/internalheap.h	2015-04-13 11:35:26.573544218 -0500
+@@ -62,6 +62,8 @@
+ 
+   void * malloc (size_t sz) {
+     void * ptr = NULL;
++//		fprintf(stderr, "internalheap malloc with sz %lx\n", sz);
++//		fprintf(stderr, "internalheap malloc with sz %lx threadindex %d\n", getThreadIndex(), sz);
+     ptr = _heap.malloc (getThreadIndex(), sz);
+ 
+   //  checkMagic(ptr);  
+@@ -70,10 +72,25 @@
+   
+   void free (void * ptr) {
+     _heap.free (getThreadIndex(), ptr);
+-//    fprintf(stderr, "@@@@@@@@@@@@free checking on ptr %p@@@@@@@@\n", ptr); 
+ //    checkMagic(ptr);  
+   }
+   
++  void * malloc (int heapid, size_t sz) {
++    void * ptr = NULL;
++//		fprintf(stderr, "internalheap malloc with sz %lx\n", sz);
++//		fprintf(stderr, "internalheap malloc with sz %lx threadindex %d\n", getThreadIndex(), sz);
++    ptr = _heap.malloc (heapid, sz);
++
++  //  checkMagic(ptr);  
++    return ptr;
++  }
++  
++  void free (int heapid, void * ptr) {
++    _heap.free (heapid, ptr);
++//    checkMagic(ptr);  
++  }
++  
++private:
+ private:
+   xpheap<xoneheap<SourceInternalHeap> >_heap; 
+ };
+@@ -81,12 +98,12 @@
+ 
+ class InternalHeapAllocator {
+ public:
+-  inline void * malloc (size_t sz) {
+-    return InternalHeap::getInstance().malloc(sz);
++  static void * malloc (size_t sz) {
++    return InternalHeap::getInstance().malloc(0, sz);
+   }
+   
+-  inline void free (void * ptr) {
+-    return InternalHeap::getInstance().free(ptr);
++  static void free (void * ptr) {
++    return InternalHeap::getInstance().free(0, ptr);
+   }
+ };
+ 
+Binary files cheetah-orig/libdefault64.so and cheetah/libdefault64.so differ
+diff -Nur cheetah-orig/libdefault.cpp cheetah/libdefault.cpp
+--- cheetah-orig/libdefault.cpp	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/libdefault.cpp	2015-04-13 11:35:26.577544267 -0500
+@@ -4,16 +4,19 @@
+ #include <stdarg.h>
+ #include "cachetrack.h"
+ #include "xrun.h"
+-//#include "IBS/ibs.h"
++
++#ifdef USING_IBS
++#include "IBS/ibs.h"
++#endif
+ 
+ extern "C" {
+-  bool isMultithreading = false;
+   void initializer (void) __attribute__((constructor));
+   void finalizer (void)   __attribute__((destructor));
+   bool initialized = false;
+   unsigned long textStart, textEnd;
+   unsigned long globalStart, globalEnd;
+   unsigned long heapStart, heapEnd;
++	bool _isMultithreading = false;
+   #define INITIAL_MALLOC_SIZE 81920
+   static char * tempalloced = NULL;
+   static int remainning = 0;
+@@ -22,8 +25,8 @@
+   xmemory  & _memory = xmemory::getInstance();
+ 
+   // FIXME: this is the function exposed to the hardware performance counter.
+-  void handleAccess(pid_t tid, unsigned long addr, size_t size, bool isWrite) {
+-    xmemory::getInstance().handleAccess(tid, addr, size, isWrite);
++  void handleAccess(pid_t tid, unsigned long addr, size_t size, bool isWrite, unsigned long  latency) {
++    xmemory::getInstance().handleAccess(tid, addr, size, isWrite, latency);
+   }
+   
+   void initializer (void) {
+@@ -41,15 +44,19 @@
+  
+     xrun::getInstance().initialize();
+     initialized = true;
+-		fprintf(stderr, "Now we have initialized successfuuly\n"); 
+-   // initIBS();
+-   // startIBS(0); //master thread
++#ifdef USING_IBS
++    initIBS();
++    startIBS(0); //master thread
++#endif
++//		fprintf(stderr, "Now we have initialized successfuuly\n"); 
+   }
+ 
+   void finalizer (void) {
+     initialized = false;
+     xrun::getInstance().finalize();
+-//    stopIBS(nthreads);
++#ifdef USING_IBS
++    stopIBS(nthreads);
++#endif
+   }
+ 
+   // Temporary mallocation before initlization has been finished.
+@@ -129,5 +136,11 @@
+   {
+      return xthread::getInstance().thread_create(tid, attr, start_routine, arg);
+   }
++
++	// Intercept the pthread_join function. Thus, 
++	// we are able to know that how many threads have exited.
++	int pthread_join(pthread_t thread, void **retval) {
++     return xthread::getInstance().thread_join(thread, retval);
++	}
+ };
+ 
+diff -Nur cheetah-orig/Makefile cheetah/Makefile
+--- cheetah-orig/Makefile	2015-03-27 10:19:47.860153749 -0500
++++ cheetah/Makefile	2015-04-13 11:35:26.581543907 -0500
+@@ -4,11 +4,11 @@
+ #SOURCE_DIR = source
+ #INCLUDE_DIR = include
+ 
++SRCS_IBS= $(SOURCE_DIR)/IBS/ibsop.c  
+ SRCS =  $(SOURCE_DIR)/libdefault.cpp \
+ 	$(SOURCE_DIR)/libfuncs.cpp         \
+-	$(SOURCE_DIR)/finetime.c     
+-#\
+-	$(SOURCE_DIR)/IBS/ibsop.c   \
++	$(SOURCE_DIR)/finetime.c   \
++	$(SRCS_IBS)  
+ 
+ INCS =  $(INCLUDE_DIR)/xdefines.h     \
+ 	$(INCLUDE_DIR)/selfmap.h         \
+@@ -25,6 +25,7 @@
+ 	$(INCLUDE_DIR)/atomic.h       \
+ 	$(INCLUDE_DIR)/elfinfo.h      \
+ 	$(INCLUDE_DIR)/finetime.h     \
++	$(INCLUDE_DIR)/xthread.h     \
+ 	$(INCLUDE_DIR)/mm.h
+ 
+ DEPS = $(SRCS) $(INCS)
+@@ -40,7 +41,8 @@
+ # -march=core2 -msse3 -DSSE_SUPPORT 
+ #CFLAGS   = -Wall -msse3 -DSSE_SUPPORT -fno-omit-frame-pointer
+ #CFLAGS   = -fno-omit-frame-pointer -DPREDICTION
+-CFLAGS   = -Wno-unused-result -fno-omit-frame-pointer -DPREDICTION -DUSING_SIGUSR2
++#CFLAGS   = -Wno-unused-result -fno-omit-frame-pointer -DPREDICTION -DUSING_SIGUSR2
++CFLAGS   = -Wno-unused-result -fno-omit-frame-pointer -DUSING_IBS -DPREDICTION -DUSING_SIGUSR2
+ #-DOUTPUT_WORD_ACCESSES
+ #CFLAGS   = -fno-omit-frame-pointer -DPREDICTION -DOUTPUT_WORD_ACCESSES
+ #-DIMPROVE_PERF 
+@@ -50,10 +52,9 @@
+ CFLAGS64 = $(CFLAGS) #-m64 # -O3
+ #CFLAGS64 = $(CFLAGS) -m64 # -O3
+ 
+-INCLUDE_DIRS = -I. -I./heaplayers -I./heaplayers/util 
+-#-I ./IBS 
+-#IBS_INCLUDE_DIRS = -I/home/xl10/libpfm/examples_v2.x/x86/../../include
+-#IBS_LINK_DIRS = -L/home/xl10/libpfm/examples_v2.x/x86/../../lib
++INCLUDE_DIRS = -I. -I./heaplayers -I./heaplayers/util -I ./IBS 
++IBS_INCLUDE_DIRS = -I/home/xl10/libpfm/examples_v2.x/x86/../../include
++IBS_LINK_DIRS = -L/home/xl10/libpfm/examples_v2.x/x86/../../lib
+ 
+ #GET_CHARACTERISTICS
+ 
+@@ -63,8 +64,7 @@
+ all: $(TARGETS)
+ 
+ libdefault32.so: $(DEPS)
+-	$(CXX) $(CFLAGS32) $(INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault32.so  -ldl -lpthread
+-#	$(CXX) $(CFLAGS32) $(INCLUDE_DIRS) $(IBS_INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault32.so  -ldl -lpthread
++	$(CXX) $(CFLAGS32) $(INCLUDE_DIRS) $(IBS_INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault32.so  -ldl -lpthread
+ 
+ libdefault64.so: $(DEPS)
+ 	$(CXX) $(CFLAGS64) $(INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault64.so  -ldl -lpthread 
+diff -Nur cheetah-orig/Makefile.noibs cheetah/Makefile.noibs
+--- cheetah-orig/Makefile.noibs	1969-12-31 18:00:00.000000000 -0600
++++ cheetah/Makefile.noibs	2015-04-13 11:35:26.577544267 -0500
+@@ -0,0 +1,77 @@
++SOURCE_DIR = .
++INCLUDE_DIR = .
++
++#SOURCE_DIR = source
++#INCLUDE_DIR = include
++
++#SRCS_IBS= $(SOURCE_DIR)/IBS/ibsop.c  
++SRCS_IBS= 
++SRCS =  $(SOURCE_DIR)/libdefault.cpp \
++	$(SOURCE_DIR)/libfuncs.cpp         \
++	$(SOURCE_DIR)/finetime.c   \
++	$(SRCS_IBS)  
++
++INCS =  $(INCLUDE_DIR)/xdefines.h     \
++	$(INCLUDE_DIR)/selfmap.h         \
++	$(INCLUDE_DIR)/xrun.h         \
++	$(INCLUDE_DIR)/xmemory.h         \
++	$(INCLUDE_DIR)/xmapping.h         \
++	$(INCLUDE_DIR)/objectheader.h \
++	$(INCLUDE_DIR)/xoneheap.h     \
++	$(INCLUDE_DIR)/xpheap.h \
++	$(INCLUDE_DIR)/callsite.h \
++	$(INCLUDE_DIR)/report.h \
++	$(INCLUDE_DIR)/cachetrack.h \
++	$(INCLUDE_DIR)/privateheap.h \
++	$(INCLUDE_DIR)/atomic.h       \
++	$(INCLUDE_DIR)/elfinfo.h      \
++	$(INCLUDE_DIR)/finetime.h     \
++	$(INCLUDE_DIR)/xthread.h     \
++	$(INCLUDE_DIR)/mm.h
++
++DEPS = $(SRCS) $(INCS)
++
++CXX = g++ -g -O2 -I$(INCLUDE_DIR) -I$(INCLUDE_DIR)/detect -I$(INCLUDE_DIR)/heap -I$(INCLUDE_DIR)/util -I$(INCLUDE_DIR)/sync
++
++# Detection on 32bit
++# CXX = g++ -DSSE_SUPPORT -m32 -DX86_32BIT -O3 -fno-omit-frame-pointer -DDETECT_FALSE_SHARING
++# Detection on 64bit
++#CXX = g++ -DSSE_SUPPORT -m64 -fno-omit-frame-pointer -DDETECT_FALSE_SHARING
++
++
++# -march=core2 -msse3 -DSSE_SUPPORT 
++#CFLAGS   = -Wall -msse3 -DSSE_SUPPORT -fno-omit-frame-pointer
++#CFLAGS   = -fno-omit-frame-pointer -DPREDICTION
++CFLAGS   = -Wno-unused-result -fno-omit-frame-pointer -DPREDICTION -DUSING_SIGUSR2
++#CFLAGS   = -Wno-unused-result -fno-omit-frame-pointer -DUSING_IBS -DPREDICTION -DUSING_SIGUSR2
++#-DOUTPUT_WORD_ACCESSES
++#CFLAGS   = -fno-omit-frame-pointer -DPREDICTION -DOUTPUT_WORD_ACCESSES
++#-DIMPROVE_PERF 
++#-DOUTPUT_WORD_ACCESSES
++#CFLAGS   = -fno-omit-frame-pointer 
++CFLAGS32 = $(CFLAGS) -m32 -DX86_32BIT # -O3
++CFLAGS64 = $(CFLAGS) #-m64 # -O3
++#CFLAGS64 = $(CFLAGS) -m64 # -O3
++
++INCLUDE_DIRS = -I. -I./heaplayers -I./heaplayers/util -I ./IBS 
++IBS_INCLUDE_DIRS = -I/home/xl10/libpfm/examples_v2.x/x86/../../include
++IBS_LINK_DIRS = -L/home/xl10/libpfm/examples_v2.x/x86/../../lib
++
++#GET_CHARACTERISTICS
++
++TARGETS = libdefault64.so
++#TARGETS = libdefault32.so libdefault64.so
++
++all: $(TARGETS)
++
++libdefault32.so: $(DEPS)
++	$(CXX) $(CFLAGS32) $(INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault32.so  -ldl -lpthread
++#	$(CXX) $(CFLAGS32) $(INCLUDE_DIRS) $(IBS_INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault32.so  -ldl -lpthread
++
++libdefault64.so: $(DEPS)
++	$(CXX) $(CFLAGS64) $(INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault64.so  -ldl -lpthread 
++#-lpfm
++
++clean:
++	rm -f $(TARGETS)
++
+diff -Nur cheetah-orig/objectinfo.h cheetah/objectinfo.h
+--- cheetah-orig/objectinfo.h	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/objectinfo.h	2015-04-13 11:35:26.577544267 -0500
+@@ -15,9 +15,21 @@
+   unsigned long words;
+   long invalidations;
+   unsigned long totalWrites;
+-  unsigned long totalAccesses;
+   unsigned long unitlength;
+   unsigned long totallength;
++  unsigned long totalFSAccesses;
++	unsigned long totalFSCycles;
++
++	// Find information of involving threads.
++	thread_t * threads[xdefines::MAX_ALIVE_THREADS];
++	unsigned long totalThreads;
++	unsigned long totalThreadsAccesses;
++	unsigned long totalThreadsCycles;
++	unsigned long longestThreadRuntime;
++	unsigned long predictThreadsCycles;
++	double threadReduceRate;
++	double predictImprovement; //Final improvement 
++
+   unsigned long * start;
+   unsigned long * stop;
+   void * winfo;
+diff -Nur cheetah-orig/report.h cheetah/report.h
+--- cheetah-orig/report.h	2015-03-29 08:59:58.275135019 -0500
++++ cheetah/report.h	2015-04-13 11:35:26.577544267 -0500
+@@ -24,18 +24,20 @@
+ #include "elfinfo.h"
+ #include "callsite.h"
+ #include "cachetrack.h"
++#include "xthread.h"
+ 
+ class report {
+   enum { MAXBUFSIZE = 4096 };
+ public:
+ 
+-  report() {}
++  report() { }
+ 
+   void initialize(bool isHeap, void * start, void * end, void * cacheWrites, cachetrack ** cacheTrackings) 
+   {
+     int    count;
+     void * ptr;
+ 
++//		fprintf(stderr, "report initialize now now!\n");
+     if(start == NULL) {
+       fprintf(stderr, "start is 0\n");
+       while(1) ;
+@@ -43,8 +45,8 @@
+     assert(start != NULL);
+     assert(end != NULL);
+     assert(cacheWrites != NULL);
+-
+-    fprintf(stderr, "reporting start %p end %p cacheWrites %p cacheTrackings %p\n", start, end, cacheWrites, cacheTrackings);
++		
++ //   fprintf(stderr, "reporting start %p end %p cacheWrites %p cacheTrackings %p totalFSCycles %ld totalFSAccesses %ld\n", start, end, cacheWrites, cacheTrackings, latency, accesses);
+ 
+     _isHeap = isHeap;
+     _start = (char *)start;
+@@ -73,15 +75,12 @@
+       exit(1);
+     }
+   
+-    fprintf(stderr, "****Start %p end %p\n", _start, _end);
+     parseElfFile();
+-    fprintf(stderr, "after pasring elffielStart %p end %p\n", _start, _end);
+   }
+ 
+    ~report() {
+   }
+ 
+-
+   // Mapping the specified elf file to current process and return the starting address.
+   void * mapImage(const char *filename, unsigned long *size) {
+     struct stat st;
+@@ -224,11 +223,13 @@
+     cachetrack * track = NULL;
+     struct wordinfo * winfo = NULL;
+     int windex = 0;
++		unsigned long latency = 0;
+   
+     object->winfo = NULL;
+     object->invalidations = 0;
+     object->totalWrites = 0;
+-    object->totalAccesses = 0;
++    object->totalFSAccesses = 0;
++    object->totalFSCycles = 0;
+ 
+     assert(firstOffset < CACHE_LINE_SIZE);
+ 
+@@ -270,9 +271,9 @@
+           continue;
+         }
+ 
++				// Detailed report, maybe we should close it in the future.
+         if(track->getInvalidations() > 0) {
+-//          fprintf(stderr, "cache %ld: cacheWrites is %ld invalidations %lx at %p\n", i, _cacheWrites[i], track->getInvalidations(), track);
+-           
++          //fprintf(stderr, "cache %ld: cacheWrites is %ld invalidations %lx at %p\n", i, _cacheWrites[i], track->getInvalidations(), track);
+           track->reportFalseSharing();
+         }
+         
+@@ -287,7 +288,8 @@
+           object->invalidations += track->getInvalidations();
+         }
+ 
+-        object->totalAccesses += track->getAccesses();
++				object->totalFSCycles += track->getLatency();
++        object->totalFSAccesses += track->getAccesses();
+       }
+    
+       
+@@ -297,21 +299,142 @@
+     if(winfo) {
+       object->winfo = (void *)winfo;
+     }
+-   
++ 
++		// Get the threads related information.
++		unsigned long checkedWords = 0;
++
++		// Cleaning up this threads.
++		memset(&object->threads, 0, xdefines::MAX_ALIVE_THREADS * sizeof(pid_t));
++		object->totalThreadsAccesses = 0;
++		object->totalThreadsCycles = 0;
++		object->totalThreads = 0;
++		object->longestThreadRuntime = 0;
++		
++		while(winfo) {
++			pid_t tid = winfo->tid;
++			bool inside = false;
++			
++			// Check whether this tid is recorded or not.
++			for(int i = 0; i < object->totalThreads; i++) {
++				if(tid == object->threads[i]->tid) {
++					inside = true;
++					break;
++				}
++			} 
++
++			if(inside == false && (tid != cachetrack::WORD_THREAD_SHARED)) {
++				// Finding thread_t of this thread. 
++				thread_t * thisThread = xthread::getInstance().getThreadInfoByTid(tid);
++
++				if(thisThread != NULL) {
++					// If this thread is not inside, record this threads.
++					object->threads[object->totalThreads] = thisThread;
++		
++//					fprintf(stderr, "tid is %d\n", tid);	
++					object->totalThreadsAccesses += thisThread->accesses;
++					object->totalThreadsCycles += thisThread->latency;
++				
++					if(object->longestThreadRuntime < thisThread->actualRuntime) {
++						object->longestThreadRuntime = thisThread->actualRuntime;
++					} 
++
++					object->totalThreads++;
++				}	
++			}
++
++			// We will check next word
++			checkedWords++;
++
++			// We will stop if we have traverse all words.
++			if(checkedWords == object->words && object->totalThreads > 0) {
++				thread_t * initialThread = xthread::getInstance().getThreadInfoByIndex(0);
++
++				unsigned long cyclesWithoutFS = (initialThread->latency * 100)/initialThread->accesses;
++				// Now we can compute the performance improvement.
++				object->predictThreadsCycles = (object->totalThreadsAccesses * cyclesWithoutFS)/100;
++				double threadImprove = (double)(object->predictThreadsCycles)/(double)object->totalThreadsCycles;
++				object->threadReduceRate = threadImprove;
++							
++				// Check whether involved threads are on the critical path of correponding thread level.
++				unsigned long realTotalRuntime = 0;
++				unsigned long predictTotalRuntime = 0;
++				unsigned long threadLevels = xthread::getInstance().getTotalThreadLevels();
++
++				// We actually check all levels.
++				for(int i = 0; i <= threadLevels; i++) {
++					struct threadLevelInfo * levelinfo = xthread::getInstance().getThreadLevelByIndex(i);
++				
++					// Now check whether this level is serial phase or not.
++					realTotalRuntime += levelinfo->elapse;
++					if(levelinfo->beginIndex == levelinfo->endIndex) {
++						// In this situation, index is not actual thread index at all. 
++						predictTotalRuntime += levelinfo->elapse;
++					}
++					else {
++						// Predict how much the performance can be affected by the possible improvement.
++						// In all threads of this level, find out the longest involving thread and 
++						// the longest nonrelated thread.
++						unsigned long involvedLongestRuntime = 0;
++						unsigned long nonrelatedLongestRuntime = 0;
++						for(int j = levelinfo->beginIndex; j <= levelinfo->endIndex; j++) {
++							thread_t * thisThread = xthread::getInstance().getThreadInfoByIndex(j);
++							bool isFound = false;
++
++							// Compare this thread with all involved threads
++							for(int k = 0; k < object->totalThreads; k++) {
++								if(thisThread == object->threads[k]) {
++									isFound = true;
++									break;
++								}
++							}
++								
++							if(isFound && (involvedLongestRuntime < thisThread->actualRuntime)) {
++								involvedLongestRuntime = thisThread->actualRuntime;
++							}
++							else if((isFound == false) && (nonrelatedLongestRuntime < thisThread->actualRuntime)) {
++								nonrelatedLongestRuntime = thisThread->actualRuntime;
++							}
++						} 	
++					
++						// Compute the predict runtime.
++						unsigned long predictThreadRuntime = (unsigned long)((double)involvedLongestRuntime * threadImprove);
++						if(predictThreadRuntime > nonrelatedLongestRuntime) {
++							predictTotalRuntime += predictThreadRuntime;
++						}
++						else {
++							predictTotalRuntime += nonrelatedLongestRuntime;
++						} 	
++					}	
++
++				}
++				
++				object->predictImprovement = ((double)realTotalRuntime - (double)predictTotalRuntime)/(double)realTotalRuntime; 
++				fprintf(stderr, "real totalRuntime %ld predicted TotalRuntime %ld\n", realTotalRuntime, predictTotalRuntime);	
++		//		fprintf(stderr, "initialthread cycles %ld predictCycles %ld actualcycles %ld threadImprove %f predicting improvement %f\n", cyclesWithoutFS, object->predictThreadsCycles, object->totalThreadsCycles, threadImprove, object->predictImprovement); 	
++				break;
++			}
++			
++			// Check next word
++			winfo++;
++		}	
++
+     return hasFS; 
+   }
+ 
+-bool isInvalidIdentification(char * objectEnd) {
+-  bool invalid = false;
++	// Check whether this object is a valid heap object since the data of 
++	// an object may have the same signature as the magic value of an object 
++	bool isInvalidIdentification(char * objectEnd) {
++  	bool invalid = false;
++
++  	if(objectEnd > _end) {
++    	invalid = true;
++  	}
++  	else if (objectEnd < _end && (*((unsigned long *)objectEnd) != objectHeader::MAGIC)) {
++   		invalid = true;
++  	}
++  	return invalid;
++	}
+ 
+-  if(objectEnd > _end) {
+-    invalid = true;
+-  }
+-  else if (objectEnd < _end && (*((unsigned long *)objectEnd) != objectHeader::MAGIC)) {
+-   invalid = true;
+-  }
+-  return invalid;
+-}
+   inline size_t getCachelineOffset(unsigned long addr) {
+     return (addr - getCacheStart((void *)addr));
+   }
+@@ -333,7 +456,6 @@
+         unsigned long  cacheStart = getCacheStart((void *)objectStart);
+         
+         // Checking whether the identification of an object is valid or not
+-
+         if(isInvalidIdentification((char *) objectEnd)) {
+             pos++;
+             continue;
+@@ -342,7 +464,6 @@
+         int   cachelineIndex = getCacheline(objectOffset); 
+ //      fprintf(stderr, "cacheStart %lx cacheineIndex %d now\n", cacheStart, cachelineIndex);
+         int   lines = getCoveredCachelines(cacheStart, objectEnd);
+-//      fprintf(stderr, "cacheStart %lx cacheineIndex %d lines %lx  objectEnd  %lx now\n", cacheStart, cachelineIndex, lines, objectEnd);
+  
+ //    	fprintf(stderr, "reportHeapObjects pos %p memend %p\n", pos, memend); 
+         // Check whether there are some invalidations on this object.
+@@ -451,9 +572,12 @@
+     int words = object->unitlength/xdefines::WORD_SIZE;
+     int size; 
+ 
++		// We should check the latency of an object
+     fprintf(stderr, "filename %s\n", _curFilename);
++    fprintf(stderr, "FALSE SHARING: start %p end %p (with size %lx). Accesses %lx invalidations %lx writes %lx total latency %lx.\n", object->start, object->stop, object->unitlength, object->totalFSAccesses, object->invalidations, object->totalWrites, object->totalFSCycles);
++    fprintf(stderr, "Latency information: totalThreads %ld totalThreadsAccesses %lx totalThreadsCycles %lx longestRuntime %ld thread reduce rate %f total improvement rate %f\n\n", object->totalThreads, object->totalThreadsAccesses, object->totalThreadsCycles, object->longestThreadRuntime, object->threadReduceRate, object->predictImprovement);
+     if(object->isHeapObject) { 
+-      fprintf(stderr, "FALSE SHARING HEAP OBJECT: start %p end %p (with size %lx). Accesses %lx invalidations %lx writes %lx. Callsite stack:\n", object->start, object->stop, object->unitlength, object->totalAccesses, object->invalidations, object->totalWrites);
++    fprintf(stderr, "It is a HEAP OBJECT with callsite stack:\n");
+       for(int i = 0; i < CALL_SITE_DEPTH; i++) {
+         if(object->u.callsite[i] != 0) {
+ //          sprintf(buf, "addr2line -i -e %s %lx", _curFilename, object->u.callsite[i]);
+@@ -463,7 +587,7 @@
+       }
+     }
+     else {
+-      fprintf(stderr, "FALSE SHARING GLOBAL VARIABLE: start %p end %p (with size %lx). Accesses %lx invalidations %lx writes %lx. \n", object->start, object->stop, object->unitlength, object->totalAccesses, object->invalidations, object->totalWrites);
++    	fprintf(stderr, "It is a GLOBAL VARIABLE:\n");
+       // Print object information about globals.
+       Elf_Sym *symbol = (Elf_Sym *)object->u.symbol;
+ //find_symbol(&_elfInfo, (intptr_t)object->start);
+@@ -507,7 +631,8 @@
+   char * _end;
+   unsigned long * _cacheWrites;
+   cachetrack ** _cacheTrackings;
+-  
++
++	// Runtime of the whole process with different phases.
+   char _curFilename[MAXBUFSIZE];
+ };
+ 
+diff -Nur cheetah-orig/selfmap.h cheetah/selfmap.h
+--- cheetah-orig/selfmap.h	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/selfmap.h	2015-04-13 11:35:26.581543907 -0500
+@@ -239,7 +239,7 @@
+         // Now it is start of global of applications
+         getRegionInfo(curentry, &startaddr, &endaddr);
+   
+-        fprintf(stderr, "Initially, startaddr %p endaddr %p\n", startaddr, endaddr); 
++//        fprintf(stderr, "Initially, startaddr %p endaddr %p\n", startaddr, endaddr); 
+         getline(iMapfile, nextentry);
+ 
+         void * newstart;
+diff -Nur cheetah-orig/sourceinternalheap.h cheetah/sourceinternalheap.h
+--- cheetah-orig/sourceinternalheap.h	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/sourceinternalheap.h	2015-04-13 11:35:26.581543907 -0500
+@@ -49,7 +49,7 @@
+ 
+     pthread_mutex_init(&_mutex, NULL);
+ 
+-		fprintf(stderr, "Internal malloc ptr %p\n", ptr);
++//		fprintf(stderr, "Internal malloc ptr %p\n", ptr);
+     // Initialize the following content according the values of xpersist class.
+     base = (char *)((intptr_t)ptr + metasize);
+     _start      = base;
+Binary files cheetah-orig/test/libtest/libmy.so and cheetah/test/libtest/libmy.so differ
+Binary files cheetah-orig/test/libtest/test and cheetah/test/libtest/test differ
+diff -Nur cheetah-orig/test/Makefile cheetah/test/Makefile
+--- cheetah-orig/test/Makefile	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/test/Makefile	2015-04-13 11:36:44.527170196 -0500
+@@ -1,5 +1,6 @@
+ all:
+-	g++ -g -L../ -o test test.cpp -lpthread
++	g++ -g -L/home/tongpingliu/falsesharing/cheetah -o test test.cpp -lpthread -ldefault64
++#	g++ -g -DUSING_IBS -L/home/tongpingliu/falsesharing/cheetah -o test test.cpp -lpthread -ldefault64
+ 
+ clean:
+ 	rm -f test
+diff -Nur cheetah-orig/test/run.sh cheetah/test/run.sh
+--- cheetah-orig/test/run.sh	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/test/run.sh	2015-04-13 11:37:51.624576717 -0500
+@@ -1,4 +1,6 @@
+ #!/bin/sh
+ 
+-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/libpfm/lib
+-time LD_PRELOAD=../libdefault64.so ./test
++#export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~./falsesharing/cheetah
++export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/tongpingliu/falsesharing/cheetah
++#:~/libpfm/lib
++LD_PRELOAD=/home/tongpingliu/falsesharing/cheetah/libdefault64.so ./test
+Binary files cheetah-orig/test/test and cheetah/test/test differ
+diff -Nur cheetah-orig/test/test.cpp cheetah/test/test.cpp
+--- cheetah-orig/test/test.cpp	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/test/test.cpp	2015-04-13 11:35:26.577544267 -0500
+@@ -5,24 +5,34 @@
+ #include <iterator>
+ #include <string>
+ #include <ctime>
++#include <sys/types.h>
++#include <unistd.h>
++#include <syscall.h>
+ 
+ #define NUM_THREADS 8
+ 
+ #define MAX_COUNT 1000000
++//#define MAX_COUNT 1000
++//#define MAX_COUNT 100
+ 
+ unsigned long array[8];
++unsigned long nonshared_array[8];
++#define gettid() syscall(SYS_gettid)
+ 
+-//extern "C" void handleAccess(pid_t tid, unsigned long addr, size_t size, bool isWrite);
++extern "C" void handleAccess(pid_t tid, unsigned long addr, size_t size, bool isWrite, unsigned long latency);
+ 
+ void *thr_func(void *arg) {
+ 	unsigned long index = (unsigned long)arg;
+ 
+-	fprintf(stderr, "At thread %ld\n", index);
+-
+-	for (int j = 0; j < 100; j++)
++//	for (int j = 0; j < 100; j++)
+ 	for(int i = 0; i < MAX_COUNT; i++) {
+ 		array[index]++;
+-//		handleAccess(index, (unsigned long)&array[index], 8, true);
++
++	#ifndef USING_IBS
++//		fprintf(stderr, "threadindex %ld address %lx handleAccess %p\n", index, (unsigned long)&array[index], handleAccess);
++		if(i % 100 == 0) 
++		handleAccess(gettid(), (unsigned long)&array[index], 8, true, 5);
++	#endif
+ 	}
+ }
+ 
+@@ -32,26 +42,45 @@
+ 		int rc;
+ 		pthread_t tid[NUM_THREADS];
+ 		unsigned long i;
+-
++		int index = 0;
+ 	
+ 		for(i = 0; i < 8; i++) {
+ 			array[i] = 0;
++			nonshared_array[i] = 0;
++		}
++
++		fprintf(stderr, "Array address %p\n", &array);
++
++		// Try to issue non false sharing writes
++	#ifndef USING_IBS
++		for(int i = 0; i < MAX_COUNT/10; i++) {
++			index++;
++			if(index == 8) {
++				index = 0;
++			}
++			nonshared_array[index]++;
++			//handleAccess(index, (unsigned long)&nonshared_array[index], 8, true);
++//			fprintf(stderr, "main function after initialization\n");
++			handleAccess(gettid(), (unsigned long)&nonshared_array[index], 8, true, 2);
+ 		}
++	#endif
+ 
+-		fprintf(stderr, "Main function after initializing the global array\n");
++	//	fprintf(stderr, "Main function, array address %p nonshared_array %p\n", array, nonshared_array);
++  //	exit(0);
+ 		// Creating threads
+     for (i=0;i<NUM_THREADS ;i++ )
+     {
+-     		fprintf(stderr, "USER: create thread %ld\n", i);
++//     		fprintf(stderr, "USER: create thread %ld\n", i);
+    			if (rc = pthread_create(&tid[i], NULL, thr_func, (void *)i))
+         {
+           fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+           return EXIT_FAILURE;
+         }
+-			  fprintf(stderr, "USER: Main function, creating thread %ld\n", i);
++//			  fprintf(stderr, "USER: Main function, creating thread %ld\n", i);
+     }
+ 
+ 
++		fprintf(stderr, "starting to join thread in main\n");
+     for (i = 0; i < NUM_THREADS; ++i) {
+         pthread_join(tid[i], NULL);
+     }
+diff -Nur cheetah-orig/threadmap.h cheetah/threadmap.h
+--- cheetah-orig/threadmap.h	1969-12-31 18:00:00.000000000 -0600
++++ cheetah/threadmap.h	2015-04-13 11:35:26.577544267 -0500
+@@ -0,0 +1,86 @@
++// -*- C++ -*-
++
++/*
++ Copyright (c) 2007-2013 , University of Massachusetts Amherst.
++
++ This program is free software; you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation; either version 2 of the License, or
++ (at your option) any later version.
++
++ This program is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++
++ You should have received a copy of the GNU General Public License
++ along with this program; if not, write to the Free Software
++ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++
++ */
++
++/*
++ * @file   threadmap.h
++ * @brief  Mapping between tid and internal thread index.
++ *         We also keep the thread running time on each entry.
++ *         For different thread entry, we can also keep track of the address of this mapping.
++ * @author Tongping Liu <http://www.cs.umass.edu/~tonyliu>
++ */
++
++#ifndef _THREADMAP_H_
++#define _THREADMAP_H_
++
++#include <sys/types.h>
++#include <syscall.h>
++#include <sys/syscall.h>
++#include "xdefines.h"
++#include "hashmap.h"
++#include "hashfuncs.h"
++#include "spinlock.h"
++
++class threadmap {
++
++public:
++  threadmap()
++  {
++  }
++ 
++  static threadmap& getInstance() {
++    static char buf[sizeof(threadmap)];
++    static threadmap * theOneTrueObject = new (buf) threadmap();
++    return *theOneTrueObject;
++  }
++ 
++  void initialize() {
++    _xmap.initialize(HashFuncs::hashInt, HashFuncs::compareInt, xdefines::MAX_THREADS);
++  } 
++
++  thread_t * getThreadInfo(pid_t tid) {
++    thread_t * info = NULL;
++    _xmap.find(tid, sizeof(pid_t), &info);
++    return info;
++  } 
++ 
++  void deleteThreadMap(pid_t tid) {
++    _xmap.erase(tid, sizeof(pid_t));
++  }
++
++  void insertThread(pid_t tid, thread_t * thread) {
++    // Malloc 
++    _xmap.insert(tid, sizeof(pid_t), thread);
++  }
++
++  void removeThread(pid_t tid) {
++    // First, remove thread from the threadmap.
++    deleteThreadMap(tid);
++  }
++
++private:
++  // We are maintainning a private hash map for each thread.
++  typedef HashMap<pid_t, thread_t *, spinlock, InternalHeapAllocator> threadHashMap;
++
++  // The  variables map shared by all threads
++  threadHashMap _xmap;
++};
++
++#endif
+diff -Nur cheetah-orig/xdefines.h cheetah/xdefines.h
+--- cheetah-orig/xdefines.h	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/xdefines.h	2015-04-13 11:35:26.577544267 -0500
+@@ -35,7 +35,9 @@
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <fcntl.h>
++#include <syscall.h>
+ 
++#include "finetime.h"
+ #include "libfuncs.h"
+ #include "log.h"
+ 
+@@ -49,6 +51,7 @@
+ extern "C"
+ {
+   typedef void * threadFunction (void *);
++	#define gettid() syscall(SYS_gettid)
+   
+   enum { CACHE_LINE_SIZE = 64 };
+   enum { CACHE_LINE_SIZE_SHIFTS = 6 };
+@@ -63,9 +66,25 @@
+   } eAccessType;
+ 
+   typedef struct thread {
+-    bool      available; // True: the thread index is free.
++		// The heap index and thread index to the threads pool.
++		// index means that the current thread is the index-th thread in the system.
++		// heapid is got by checking the availablity of threads in the system.
++		// We don't want to make two alive threads to use the same subheap to avoid 
++		// false sharing problem. 
+     int       index;
+-//    pid_t     tid; // Current process id of this thread.
++		int       heapid;
++
++		// What is the actual thread id. tid can be greater than 1024.
++		int       tid;
++		
++		// Who is my parent;
++		int       pindex;
++		pid_t     ptid;
++
++		// Who is my children in this phase;
++		int childBeginIndex;
++		int childEndIndex;
++ 
+     pthread_t self; // Results of pthread_self
+ 		char outputBuf[LOG_SIZE];	
+ 
+@@ -73,6 +92,15 @@
+     threadFunction * startRoutine;
+     void * startArg; 
+ 
++		// How much latency for all accesses on this thread?
++		struct timeinfo startTime;
++		unsigned long actualRuntime;
++		unsigned long parentRuntime;
++		unsigned long levelIndex; // In which phase
++
++		unsigned long latency;
++		unsigned long accesses;
++
+     // We used this to record the stack range
+     void * stackBottom;
+     void * stackTop;
+@@ -86,7 +114,7 @@
+   extern __thread thread_t * current;
+   extern __thread bool isBacktrace; 
+   extern bool initialized;
+-  extern bool isMultithreading;
++	extern bool _isMultithreading;
+ 
+ 	// inline char getThreadBuffer()
+ 	inline char * getThreadBuffer() {
+@@ -94,10 +122,27 @@
+ 	}
+ 
+   // Get thread index
++  inline int getTid(void) {
++    return current->tid;
++  }
++
++	// Get theap id
++	inline int getHeapId(void) {
++		return current->heapid;
++	}
++
++  // Get thread index
+   inline int getThreadIndex(void) {
+     return current->index;
+   }
+ 
++	// Update thread latency
++	inline void updateThreadLatency(unsigned long latency) {
++		current->latency += latency;
++		current->accesses += 1;
++//		fprintf(stderr, "Updating THREAD%d: latency %lx now %lx\n", current->tid, latency, current->latency);
++	}
++
+   enum { USER_HEAP_BASE     = 0x40000000 }; // 1G
+   enum { USER_HEAP_SIZE = 1048576UL * 8192  * 8}; // 8G
+   enum { MAX_USER_SPACE     = USER_HEAP_BASE + USER_HEAP_SIZE };
+@@ -155,8 +200,12 @@
+   enum { PageSize = 4096UL };
+   enum { PAGE_SIZE_MASK = (PAGE_SIZE-1) };
+ 
+-  enum { MAX_THREADS = 1024 };
+-  enum { NUM_HEAPS = MAX_THREADS };
++  enum { MAX_THREADS = 4096 };
++	
++	// We only support 64 heaps in total.
++  enum { NUM_HEAPS = 128 };
++  enum { MAX_ALIVE_THREADS = NUM_HEAPS };
++  enum { MAX_THREAD_LEVELS = 256 };
+   
+   // 2^6 = 64
+   // Since the "int" is most common word, we track reads/writes based on "int"
+@@ -170,12 +219,13 @@
+ 
+   // We start to track all accceses only when writes is larger than this threshold.
+   // If not, then we only need to track writes. 
+-  enum { THRESHOLD_TRACK_DETAILS = 1 };
++  enum { THRESHOLD_TRACK_DETAILS = 2 };
+  
+   // We should guarantee that sampling period should cover the prediction phase.
+   enum { SAMPLE_ACCESSES_EACH_INTERVAL = THRESHOLD_TRACK_DETAILS};
+   //enum { SAMPLE_INTERVAL = SAMPLE_ACCESSES_EACH_INTERVAL * 100 };
+-  enum { SAMPLE_INTERVAL = SAMPLE_ACCESSES_EACH_INTERVAL * 100 };
++  enum { SAMPLE_INTERVAL = SAMPLE_ACCESSES_EACH_INTERVAL * 1 };
++  //enum { SAMPLE_INTERVAL = SAMPLE_ACCESSES_EACH_INTERVAL * 100 };
+ 
+   // Now we can start to check potential false sharing 
+   enum { THRESHOLD_PREDICT_FALSE_SHARING = THRESHOLD_TRACK_DETAILS * 2 };
+diff -Nur cheetah-orig/xheap.h cheetah/xheap.h
+--- cheetah-orig/xheap.h	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/xheap.h	2015-04-13 11:35:26.577544267 -0500
+@@ -64,7 +64,7 @@
+     _position  = (char *)_start;
+     _remaining = startsize;
+     _magic     = 0xCAFEBABE;
+-    fprintf(stderr, "XHEAP:ptr %p start %p end %p\n", ptr, _start, _end);
++    //fprintf(stderr, "XHEAP:ptr %p start %p end %p\n", ptr, _start, _end);
+     return ptr;
+     // PRDBG("XHEAP:_start at %p end at %p mutexlock %p\n", &_start, &_end, _lock);
+   }
+diff -Nur cheetah-orig/xmemory.h cheetah/xmemory.h
+--- cheetah-orig/xmemory.h	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/xmemory.h	2015-04-13 11:35:26.577544267 -0500
+@@ -34,6 +34,7 @@
+ #include <sys/types.h>
+ #include <unistd.h>
+ #include <set>
++#include <sys/types.h>
+ 
+ #include "xglobals.h"
+ #include "xpheap.h"
+@@ -50,6 +51,7 @@
+ #include "internalheap.h"
+ #include "spinlock.h"
+ #include "report.h"
++#include "threadmap.h"
+ #include "mm.h"
+ 
+ class xmemory {
+@@ -79,26 +81,26 @@
+ 	  _heap.initialize(USER_HEAP_SIZE);
+     _globals.initialize();   
+ 
+-		fprintf(stderr, "Initialize the heap and globals\n");   	
++	//	fprintf(stderr, "Initialize the heap and globals\n");   	
+ // Initialize the status word of cache line. 
+     initCachelineStatus();
+     _heapCacheIndex = getCachelineIndex(USER_HEAP_BASE);
+-		fprintf(stderr, "Initialize the heap and globals and cacheline status\n");   	
++	//	fprintf(stderr, "Initialize the heap and globals and cacheline status\n");   	
+   }
+ 
+-  void finalize() {
++  void finalize(void) {
+     reportFalseSharing();
+   }
+  
+   // Report false sharing for current mapping
+-  void reportFalseSharing() {
++  void reportFalseSharing(void) {
+     // Initialize the reporter in the end.
+     report reporter;
+ 
+     // Reporting the false sharing in the globals.
+-    unsigned long index = getCachelineIndex(globalStart);
+-    //fprintf(stderr, "globalStart %lx\n", globalStart);
++//    unsigned long index = getCachelineIndex(globalStart);
+     reporter.initialize(false, (void *)globalStart, (void *)globalEnd, (void *)_cacheWrites, _cacheTrackings);
++		
+     reporter.reportFalseSharing();
+ 
+     void * heapEnd = _heap.getHeapPosition();
+@@ -107,10 +109,6 @@
+   }
+ 
+ 
+-  inline int getHeapId(void) {
+-    return getThreadIndex();
+-  }
+-
+   inline void storeCallsite(unsigned long start, CallSite * callsite) {
+     memcpy((void *)(start - CALLSITE_SIZE), (void *)callsite, CALLSITE_SIZE);
+   }
+@@ -303,14 +301,20 @@
+     return hasSuspect;
+   }
+ 
+-  inline cachetrack * allocCacheTrack(unsigned long addr, unsigned long totalWrites) {
+-    void * ptr = InternalHeap::getInstance().malloc(sizeof(cachetrack));
++  inline cachetrack * allocCacheTrack(pid_t tid, unsigned long addr, unsigned long totalWrites) {
++		// Now we have to get heapid from the tid
++		int heapid = getHeapIdByTid(tid);
++
++    void * ptr = InternalHeap::getInstance().malloc(heapid, sizeof(cachetrack));
++		//fprintf(stderr, "addr %lx totalWrites %lx ptr %p\n", addr, totalWrites, ptr);
+     cachetrack * track = new (ptr) cachetrack(addr, totalWrites);
+     return track;
+   }
+ 
+-  inline cachetrack * deallocCacheTrack(cachetrack * track) {
+-    InternalHeap::getInstance().free(track);
++  inline cachetrack * deallocCacheTrack(pid_t tid, cachetrack * track) {
++		int heapid = getHeapIdByTid(tid);
++		// Now we have to get heapid from the tid
++    InternalHeap::getInstance().free(heapid, track);
+   }
+ 
+   // In order to track one cache line, we should make the _cacheWrites larger than the specified threshold.
+@@ -318,29 +322,6 @@
+     atomic_exchange(&_cacheWrites[index], xdefines::THRESHOLD_TRACK_DETAILS);
+   }
+ 
+-  inline cachetrack * trackCacheline(unsigned long addr, unsigned long index) {
+-    cachetrack * track = NULL;
+-    // check whether this cache line is already tracked or not.
+-    unsigned long writes = _cacheWrites[index];
+-
+-    if(writes < xdefines::THRESHOLD_TRACK_DETAILS) {
+-      // If not tracked, then try to allocate an 
+-      track = allocCacheTrack(addr, writes);
+-      // Set to corresponding array.
+-      if(!atomic_compare_and_swap((unsigned long *)&_cacheTrackings[index], 0, (unsigned long)track)) {
+-		//		PRERR("	_cacheTrackings[%d] is %d wrong!!!!\n", index, _cacheTrackings[index]);
+-        deallocCacheTrack(track);
+-        track = NULL;
+-      }
+-      else {
+-        // Promote the accesses on index.
+-        enableCachelingTracking(index);
+-      }
+-    }
+-      
+-    return track;
+-  }
+-
+   inline bool isValidObjectHeader(objectHeader * object, unsigned long * address) {
+     unsigned long * objectEnd = (unsigned long *)object->getObjectEnd();
+     return (object->isValidObject() && address < objectEnd);
+@@ -412,28 +393,41 @@
+   }
+ 
+ 
+-  inline void allocateCachetrack(unsigned long index) {
++  inline void allocateCachetrack(pid_t tid, unsigned long index) {
+     size_t cachestart = index << CACHE_LINE_SIZE_SHIFTS;
+     cachetrack * track = NULL;
+-    track = allocCacheTrack(cachestart, xdefines::THRESHOLD_TRACK_DETAILS);
++    track = allocCacheTrack(tid, cachestart, xdefines::THRESHOLD_TRACK_DETAILS);
+     // Set to corresponding array.
+     //fprintf(stderr, "allocCacheTrack index %ld at %p set to %p\n", index, &_cacheTrackings[index], track);
+     if(!atomic_compare_and_swap((unsigned long *)&_cacheTrackings[index], 0, (unsigned long)track)) {
+-      deallocCacheTrack(track);
++      deallocCacheTrack(tid, track);
+     }
+   }
+  
+   // Main entry of handle each access
+-  inline void handleAccess(pid_t tid, unsigned long addr, int bytes, bool isWrite) {
++  inline void handleAccess(pid_t tid, unsigned long addr, int bytes, bool isWrite, unsigned long latency) {
+     // Xu Liu: Disable the error output from this checking. Hardware sampling check obtain samples from addresses ranges out of the monitored code space.
+     if((intptr_t)addr > MAX_USER_SPACE) {
+ //	 		PRERR("the address seems not right. It should not be larger than %lx\n", MAX_USER_SPACE);
+      	return;
+     }
++	
++//		fprintf(stderr, "in xmemory: before updateThreadLatency, latency %ld\n", latency);	
++		updateThreadLatency(latency);
++
++	//	fprintf(stderr, "actually check handleAccess at line %d is_Multithreading %d \n", __LINE__, _isMultithreading);
++		// We don't actually track the memory access when there is only one thread.
++		if(!_isMultithreading) {
++			return;
++		}
++
++	//	fprintf(stderr, "handleAccess at line %d tid %d\n", __LINE__, tid);
++
+     // We only care those acesses of global and heap.
+     unsigned long index = getCachelineIndex(addr);
+     cachetrack * track = NULL;
+-    
++   
++		//fprintf(stderr, "addr %lx index %p\n", addr, index); 
+     unsigned long * status = &_cacheWrites[index];
+     unsigned long totalWrites = *status;
+ 		eAccessType type;
+@@ -450,11 +444,16 @@
+ 		// actually cause the performance problem. Thus, currently we only need to update 
+ 		// the number of writes on this cache line.
+     if(totalWrites < xdefines::THRESHOLD_TRACK_DETAILS) {
+-      // Only update writes
++  		//fprintf(stderr, "totalWrites is %ld\n", totalWrites); 
++	//	fprintf(stderr, "actually check handleAccess at line %d\n", __LINE__);
++	   // Only update writes
+       if(type == E_ACCESS_WRITE) {
+         if(atomic_increment_and_return(status) == xdefines::THRESHOLD_TRACK_DETAILS-1) {
+           size_t cachestart = getCacheStart((void *)addr);
+-          track = allocCacheTrack(cachestart, xdefines::THRESHOLD_TRACK_DETAILS);
++				//	fprintf(stderr, "index is at %ld cachestart %lx\n", index, cachestart);
++          track = allocCacheTrack(tid, cachestart, xdefines::THRESHOLD_TRACK_DETAILS);
++			//		fprintf(stderr, "index is at %ld, track %p\n", index,  track);
++
+           // Set to corresponding array.
+           atomic_compare_and_swap((unsigned long *)&_cacheTrackings[index], 0, (unsigned long)track);
+         }
+@@ -469,7 +468,7 @@
+           PRERR("Not a valid track %p, it should be larger than %x\n", track, xdefines::THRESHOLD_TRACK_DETAILS);
+         }
+         assert((intptr_t)track > xdefines::THRESHOLD_TRACK_DETAILS);
+-        track->handleAccess(tid, (void *)addr, bytes, type);
++        track->handleAccess(tid, (void *)addr, bytes, type, latency);
+       } 
+     }
+   }
+@@ -480,6 +479,16 @@
+     return (o - 1);
+   }
+ 
++	thread_t * getThread(pid_t tid) {
++		return threadmap::getInstance().getThreadInfo(tid);
++	}
++
++	int getHeapIdByTid(pid_t tid) {
++		thread_t * thread = getThread(tid);
++		
++		return thread->heapid;
++	}
++
+   /// The protected heap used to satisfy big objects requirement. Less
+   /// than 256 bytes now.
+   xpheap<xoneheap<xheap> > _heap;
+diff -Nur cheetah-orig/xoneheap.h cheetah/xoneheap.h
+--- cheetah-orig/xoneheap.h	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/xoneheap.h	2015-04-13 11:35:26.577544267 -0500
+@@ -56,7 +56,10 @@
+   bool nop() { return getHeap()->nop(); }
+  
+ 
+-  void * malloc (size_t sz) { return getHeap()->malloc(sz); }
++  void * malloc (size_t sz) { 
++//		fprintf(stderr, "xoneheap malloc sz %lx\n", sz);
++	 	return getHeap()->malloc(sz); 
++	}
+   void free (void * ptr) { getHeap()->free(ptr); }
+   size_t getSize (void * ptr) { return getHeap()->getSize(ptr); }
+ 
+diff -Nur cheetah-orig/xpheap.h cheetah/xpheap.h
+--- cheetah-orig/xpheap.h	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/xpheap.h	2015-04-13 11:35:26.577544267 -0500
+@@ -48,7 +48,7 @@
+ 
+     // We are adding one objectHeader and two "canary" words along the object
+     // The layout will be:  objectHeader + "canary" + Object + "canary".
+-    //fprintf(stderr, "AdaptAppHeap before malloc sz %d\n", sz);
++//    fprintf(stderr, "AdaptAppHeap before malloc sz %d\n", sz);
+     void * ptr = SourceHeap::malloc (sz + sizeof(objectHeader));
+     if (!ptr) {
+       return NULL;
+@@ -135,7 +135,7 @@
+ 
+   void * malloc (int ind, size_t sz)
+   {
+-   // printf("PerThreadheap malloc ind %d sz %d _heap[ind] %p\n", ind, sz, &_heap[ind]);
++   //fprintf(stderr, "PerThreadheap malloc ind %d sz %d _heap[ind] %p\n", ind, sz, &_heap[ind]);
+     // Try to get memory from the local heap first.
+     void * ptr = _heap[ind].malloc (sz);
+     return ptr;
+@@ -197,7 +197,7 @@
+   }
+ 
+   void * malloc(int heapid, size_t size) {
+-//    fprintf(stderr, "malloc in xpheap with size %ld heapid %d\n", size, heapid);
++ //   fprintf(stderr, "malloc in xpheap with size %ld heapid %d\n", size, heapid);
+     return _heap->malloc(heapid, size);
+   }
+ 
+diff -Nur cheetah-orig/xrun.h cheetah/xrun.h
+--- cheetah-orig/xrun.h	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/xrun.h	2015-04-13 11:35:26.581543907 -0500
+@@ -65,18 +65,21 @@
+ 		installSignalHandler();
+     InternalHeap::getInstance().initialize();
+ 
++//		fprintf(stderr, "xrun initialize before xthread initialize\n");
+ 		xthread::getInstance().initialize();
+ 
++//		fprintf(stderr, "xrun initialize before xmemory initialize\n");
+     // Initialize the memory (install the memory handler)
+     _memory.initialize();
+   }
+ 
+   void finalize (void)
+   {
+-    fprintf(stderr, "Finalizing, check the false sharing problem now.\n");
++		xthread::getInstance().finalize();
++
+     // If the tid was set, it means that this instance was
+     // initialized: end the transaction (at the end of main()).
+-   _memory.finalize();
++   	_memory.finalize();
+   }
+ 
+   /// @brief Install a handler for KILL signals.
+diff -Nur cheetah-orig/xthread.h cheetah/xthread.h
+--- cheetah-orig/xthread.h	2015-03-27 10:09:03.446361229 -0500
++++ cheetah/xthread.h	2015-04-13 11:35:26.577544267 -0500
+@@ -31,8 +31,27 @@
+ #include <new>
+ #include <pthread.h>
+ #include <sys/types.h>
++#include <sys/syscall.h>
++#include <unistd.h>
++#include <stdlib.h>
++#include <stdio.h>
++
+ #include "xdefines.h"
+-//#include "IBS/ibs.h"
++#include "finetime.h"
++#include "threadmap.h"
++
++#ifdef USING_IBS
++#include "IBS/ibs.h"
++#endif
++
++extern "C" {
++	struct threadLevelInfo {
++		int beginIndex;
++		int endIndex;
++		struct timeinfo startTime;
++		unsigned long elapse;
++	};
++}; 
+ 
+ class xthread {
+ private:
+@@ -50,90 +69,209 @@
+   void initialize()
+   {
+     _aliveThreads = 0;
+-    _threadIndex = 0;
++		_threadIndex = 0;
++    _heapid = 0;
++		_predPerfImprovement = true;
++		_origThreadId = gettid();
++
++		// Acquire the number of CPUs.
++		_numCPUs= sysconf(_SC_NPROCESSORS_ONLN);
++		if(_numCPUs < 0) {
++			fprintf(stderr, "Can't get the CPU's number\n");
++			abort();
++		}
+ 
+-    _totalThreads = xdefines::MAX_THREADS;
+-  
++		// How we can get the information in the beginning.
+     pthread_mutex_init(&_lock, NULL);
+ 
+     // Shared the threads information. 
+     memset(&_threads, 0, sizeof(_threads));
+ 
+-    // Initialize all mutex.
+-    thread_t * thisThread;
+-  
+-    for(int i = 0; i < _totalThreads; i++) {
+-      thisThread = &_threads[i];
+- 
+-      thisThread->available = true;
++		// Set all entries to be available initially 
++    for(int i = 0; i < xdefines::NUM_HEAPS; i++) {
++			_HeapAvailable[i] = true;
+     }
+ 
++		// Set this thread level information to 0.
++		memset(&_threadLevelInfo, 0, sizeof(struct threadLevelInfo)*xdefines::MAX_THREAD_LEVELS);
++
++		// Initialize the threadmap.
++		threadmap::getInstance().initialize();
++
+     // Allocate the threadindex for current thread.
+-    initInitialThread(); 
++    initInitialThread();
+   }
+ 
++	// The end of system. 
++	void finalize(void) {
++		// Stop the last level
++		stopThreadLevelInfo();
++	}
++
++	void insertThreadMap(pid_t tid, thread_t * thread) {
++//		fprintf(stderr, "insertThreadMap tid %d\n", tid);
++		threadmap::getInstance().insertThread(tid, thread);
++	}
++
++	void removeThreadMap(pthread_t tid) {
++		threadmap::getInstance().removeThread(tid);
++	}
++
++	void removeThreadMap(thread_t * thread) {
++		removeThreadMap(thread->self);
++	}
++
++	thread_t * getThreadInfoByTid(pthread_t tid) {
++		return threadmap::getInstance().getThreadInfo(tid);
++	}
++
+   // Initialize the first threadd
+   void initInitialThread(void) {
+     int tindex;
+-    
++
++		// We know that we will going to execute     
++    current = getThreadInfoByIndex(0);
++
+      // Allocate a global thread index for current thread.
+-    tindex = allocThreadIndex();
++    tindex = allocThreadIndex( );
+ 
+-    // First, xdefines::MAX_ALIVE_THREADS is too small.
+-    if(tindex == -1) {
+-      PRDBG("The alive threads is larger than xefines::MAX_THREADS larger!!\n");
+-      assert(0);
+-    }
++		assert(tindex == 0);
+ 
+     // Get corresponding thread_t structure.
+-    current  = getThreadInfo(tindex);
+-
+-    current->index = tindex;
+     current->self  = pthread_self();
++    current->tid  = gettid();
++		insertThreadMap(current->tid, current);
+   }
+ 
+-
+-  thread_t * getThreadInfo(int index) {
+-    assert(index < _totalThreads);
+-
++  thread_t * getThreadInfoByIndex(int index) {
+     return &_threads[index];
+   }
+ 
++	// Updating the end index in every allocThreadIndex
++	// There is no need to hold the lock since only the main thread can call allocThreadIndex
++	void updateThreadLevelInfo(int threadindex) {
++		struct threadLevelInfo * info = &_threadLevelInfo[_threadLevel];
++
++		if(info->endIndex < threadindex) {
++			info->endIndex = threadindex;
++		}
++	}
++
++	// Start a thread level
++	void startThreadLevelInfo(int threadIndex) {
++		struct threadLevelInfo * info = &_threadLevelInfo[_threadLevel];
++
++		start(&info->startTime);
++		info->beginIndex = threadIndex;
++		info->endIndex = threadIndex;
++		
++//		fprintf(stderr, "starting a new thread level\n");
++	}
++	
++	// Start a thread level
++	void stopThreadLevelInfo(void) {
++		struct threadLevelInfo * info = &_threadLevelInfo[_threadLevel];
++
++		info->elapse = elapsed2ms(stop(&info->startTime, NULL));
++
++//		fprintf(stderr, "PHASE end %ld\n", info->elapse);
++	}
++
++	unsigned long getTotalThreadLevels(void) {
++		return _threadLevel;
++	}
++
++	struct threadLevelInfo * getThreadLevelByIndex(int index) {
++		return &_threadLevelInfo[index];
++	}
++
+   // Allocate a thread index under the protection of global lock
+   int allocThreadIndex(void) {
+-   int index = -1;
+-
+-    if(_aliveThreads >= _totalThreads) {
+-      fprintf(stderr, "Set xdefines::MAX_THREADS to larger. _alivethreads %d totalthreads %d", _aliveThreads, _totalThreads);
++		global_lock();
++		int index = _threadIndex++;
++		int alivethreads = _aliveThreads++;
++
++	//	fprintf(stderr, "allocThreadIndex in the beginning, with index %d alivethread %d\n", index, alivethreads);
++		// Check whether we have created too many threads or there are too many alive threads now.
++    if(index >= xdefines::MAX_THREADS || alivethreads >= xdefines::MAX_ALIVE_THREADS) {
++      fprintf(stderr, "Set xdefines::MAX_THREADS to larger. _alivethreads %ld totalthreads %ld maximum alive threads %d", _aliveThreads, _threadIndex, xdefines::MAX_ALIVE_THREADS);
+       abort(); 
+     } 
+ 
+-    int origindex = _threadIndex;
+-		fprintf(stderr, "threadindex %d\n", _threadIndex);
+-    thread_t * thread;
+-    while(true) {  
+-      thread = getThreadInfo(_threadIndex);
+-      if(thread->available) {
+-        thread->available = false;
+-        index = _threadIndex;
+-        
+-        // A thread is counted as alive when its structure is allocated.
+-        _aliveThreads++;
+-
+-        _threadIndex = (_threadIndex+1)%_totalThreads;
+-        break;
+-      }
+-      else {
+-        _threadIndex = (_threadIndex+1)%_totalThreads;
+-      }
++		// Initialize 
++    thread_t * thread = getThreadInfoByIndex(index);
++		thread->ptid = gettid();
++		thread->index = index;
++		thread->latency = 0;
++		thread->accesses = 0;
++		thread->levelIndex = _threadLevel; 
++		start(&thread->startTime);
++
++	//	fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
++
++		// Now find one available heapid for this thread.
++		thread->heapid = allocHeapId();
++
++		// Check whether we are still in the the normal case
++		if(thread->ptid != _origThreadId) {
++		//	fprintf(stderr, "thread->ptid %d origthreadid %d\n", thread->ptid, _origThreadId);
++			_predPerfImprovement = false;
++		}
++ 
++		// If alivethreads is 1, we are creating new threads now.
++	//	fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
++		if(alivethreads == 0) {
++			// We need to save the starting time
++			startThreadLevelInfo(index);
++		}
++		else if(alivethreads == 1) {
++			// Now we are trying to create more threads
++			// Serial phase is ended now.
++			_isMultithreading = true;
++	
++			current->childBeginIndex = index;
++			current->childEndIndex = index;
++	
++//			fprintf(stderr, "Setting multithreading!!!!!\n");
++			// Now we get the elapse of the serial phase	
++			stopThreadLevelInfo();
++			
++			// Now we are entering into a new level
++			_threadLevel++;		
++			startThreadLevelInfo(index);
++		}
++		else if (alivethreads > 1) {
++			// We don't know how many threads are we going to create.
++			// thus, we simply update the endindex now.
++			updateThreadLevelInfo(index);
++			if(index > current->childEndIndex) {
++				current->childEndIndex = index;
++			}
++		}
++
++		//fprintf(stderr, "threadindex %d\n", _threadIndex);
++		if(alivethreads == 0) {
++			// Set the pindex to 0 for the initial thread
++			thread->pindex = 0;
++			thread->parentRuntime = 0;
++		}
++		else {
++			thread->parentRuntime=getParentRuntime(thread->pindex);
++			thread->pindex = getThreadIndex();
++		}
++
++		global_unlock();
+     
+-      // It is impossible that we search the whole array and we can't find
+-      // an available slot. 
+-      assert(_threadIndex != origindex); 
+-    }
+     return index; 
+   }
+ 
++	// How we can get the parent's runtime on the last epoch?
++	unsigned long getParentRuntime(int index) {
++		thread_t *thread = getThreadInfoByIndex(index);
++
++		return thread->actualRuntime;
++	}
++
+   /// Create the wrapper 
+   /// @ Intercepting the thread_creation operation.
+   int thread_create(pthread_t * tid, const pthread_attr_t * attr, threadFunction * fn, void * arg) {
+@@ -141,53 +279,155 @@
+     int tindex;
+     int result;
+ 
+-		fprintf(stderr, "INside the thread_create\n");
+-    // Lock and record
+-    global_lock();
+-
+     // Allocate a global thread index for current thread.
+     tindex = allocThreadIndex();
++    thread_t * children = getThreadInfoByIndex(tindex);
+     
+-    // First, xdefines::MAX_ALIVE_THREADS is too small.
+-    if(tindex == -1) {
+-      PRDBG("The alive threads is larger than xefines::MAX_THREADS larger!!\n");
+-      assert(0);
+-    }
+- 
+-    // Get corresponding thread_t structure.
+-    thread_t * children = getThreadInfo(tindex);
+-    
+-    children->index = tindex;
+     children->startRoutine = fn;
+     children->startArg = arg;
+ 
+-    global_unlock();
+-
+     result =  WRAP(pthread_create)(tid, attr, startThread, (void *)children);
++		
+ 
+-		fprintf(stderr, "after the thread_create, tid %d index %d\n", *tid, tindex);
+-    // Set up the thread index in the local thread area.
+     return result;
+   }      
+ 
++	thread_t * getChildThreadStruct( pthread_t thread) {
++		thread_t * thisThread = NULL;
++
++		int index = current->childBeginIndex;
++
++		while(true) {
++			thisThread = &_threads[index];
++
++			index++;
++
++			// We find the child
++			if(thisThread->self == thread) {
++				current->childBeginIndex = index;
++				break;
++			}
++			else {
++				if(index <= current->childEndIndex) {
++					continue;
++				}
++				else {
++					printf("Can't find the thread_t structure with specifid thread\n");
++					abort();
++				}
++			}	
++		}
++
++		return thisThread;
++	}
++
++	int thread_join(pthread_t thread, void **retval)  {
++		int ret;
++
++		
++		ret = WRAP(pthread_join(thread, retval));
++
++		if(ret == 0) {
++			thread_t * thisThread;
++
++			// Finding out the thread with this pthread_t 
++			thisThread = getChildThreadStruct(thread);
++
++			markThreadExit(thisThread);
++		}
++
++		return ret;
++	}
+ 
+   // @Global entry of all entry function.
+   static void * startThread(void * arg) {
+     void * result;
+ 
+     current = (thread_t *)arg;
+-//    startIBS(current->index);
+-//    current->tid = gettid();
++
++#ifdef USING_IBS
++    startIBS(current->index);
++#endif
+     current->self = pthread_self();
++		current->tid = gettid();
+ 
++		// Insert myself into the thread map.
++		xthread::getInstance().insertThreadMap(current->tid, current);
++		//insertThreadMap(current->tid, current);
++		
+     // from the TLS storage.
+     result = current->startRoutine(current->startArg);
+ 
+-    // Decrease the alive threads
+-    xthread::getInstance().removeThread(current);
+-    
++		// Get the stop time.
++		current->actualRuntime = elapsed2ms(stop(&current->startTime, NULL));
++
++//		fprintf(stderr, "runtime of thread %ld %ld\n", current->self, current->actualRuntime);
++  
+     return result;
+   }
++	
++	// In the end, we should compute the total latency.
++	unsigned long getTotalLatency(int startIndex, int stopIndex) {
++    int index = startIndex;
++
++		unsigned long latency = 0;
++
++		//fprintf(stderr, "threadindex %d\n", _threadIndex);
++    thread_t * thread;
++    while(true) {
++
++			// Get the latency of all active threads. 
++      thread = getThreadInfoByIndex(index);
++			latency += thread->latency;				        
++
++			index++;
++			
++			// We will skipp the original thread.
++			if(index%xdefines::MAX_THREADS == 0) {
++				index = 1; 
++			}
++			
++			// If we have checked all threads, let's return now.
++			if(index == stopIndex) {
++				break;
++			}
++		}
++
++		// Return the full latency
++		return latency;
++	}
++
++	// In the end, we should compute the total latency.
++	unsigned long getTotalAccesses(int startIndex, int stopIndex) {
++    int index = startIndex;
++
++		unsigned long accesses = 0;
++
++		//fprintf(stderr, "threadindex %d\n", _threadIndex);
++    thread_t * thread;
++    while(true) {
++
++			// Get the latency of all active threads. 
++      thread = getThreadInfoByIndex(index);
++			accesses += thread->accesses;				        
++
++			index++;
++			
++			// We will skipp the original thread.
++			if(index%xdefines::MAX_THREADS == 0) {
++				index = 1; 
++			}
++			
++			// If we have checked all threads, let's return now.
++			if(index == stopIndex) {
++				break;
++			}
++		}
++		
++		return accesses;
++
++	}
++
+ 
+ private:
+   /// @brief Lock the lock.
+@@ -199,27 +439,76 @@
+   void global_unlock(void) {
+     pthread_mutex_unlock(&_lock);
+   }
+-  
+-  void removeThread(thread_t * thread) {
+-  //  fprintf(stderr, "remove thread %p with thread index %d\n", thread, thread->index);
++
++	/// @ Allocation should be always successful.
++	int allocHeapId(void) {
++		int heapid;
++
++		while(true) {
++			if(_HeapAvailable[_heapid] == true) {
++				heapid = _heapid;
++				_HeapAvailable[_heapid] = false;
++				_heapid = (_heapid+1)%xdefines::NUM_HEAPS;
++				break;	
++			}
++			_heapid = (_heapid+1)%xdefines::NUM_HEAPS;
++		}
++	
++		return heapid;
++	}
++
++	// Set the heap to be available if the thread is exiting.
++	void releaseHeap(int heapid) {
++		_HeapAvailable[heapid] = true;
++	}
++ 
++	// Now we will mark the exit of a thread 
++  void markThreadExit(thread_t * thread) {
++  // fprintf(stderr, "remove thread %p with thread index %d\n", thread, thread->index);
+     global_lock();
+ 
+-    current->available = true;
+     --_aliveThreads;
+ 
+-    if(_aliveThreads == 0) {
+-      isMultithreading = false;
+-    }
++		if(_aliveThreads == 1) {
++			_isMultithreading = false;
++			
++			// Now we have to update latency information for the current level
++    	if(_predPerfImprovement) {
++				stopThreadLevelInfo();
++
++				// Now we will udpate the level.
++				_threadLevel++;
++
++				// Now we will start a new serial phase.			
++				startThreadLevelInfo(_threadIndex);
++    	}
++		}
++
++		// Release the heap id for this thread.
++		releaseHeap(thread->heapid);
+ 
+     global_unlock();
+   }
+ 
++
+   pthread_mutex_t _lock;
+-  int _threadIndex;
+-  int _aliveThreads;
+-  int _totalThreads;  
++  volatile unsigned long _threadIndex;
++  volatile unsigned long _aliveThreads;
++  int _tid;
++	int _numCPUs;
++	pid_t _origThreadId;
++	int _heapid;
++		
++	// We are adding a total latency here.
++	bool  _predPerfImprovement;
++
++	bool     _HeapAvailable[xdefines::NUM_HEAPS];
+   // Total threads we can support is MAX_THREADS
+   thread_t  _threads[xdefines::MAX_THREADS];
++
++	// We will update these information
++	int _threadLevel;
++	struct threadLevelInfo _threadLevelInfo[xdefines::MAX_THREAD_LEVELS];
+ };
+ #endif
+ 
