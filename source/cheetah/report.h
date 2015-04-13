@@ -76,12 +76,10 @@ public:
     }
   
     parseElfFile();
-   // fprintf(stderr, "after pasring elffielStart %p end %p\n", _start, _end);
   }
 
    ~report() {
   }
-
 
   // Mapping the specified elf file to current process and return the starting address.
   void * mapImage(const char *filename, unsigned long *size) {
@@ -318,7 +316,7 @@ public:
 			
 			// Check whether this tid is recorded or not.
 			for(int i = 0; i < object->totalThreads; i++) {
-				if(tid == object->threads[i]) {
+				if(tid == object->threads[i]->tid) {
 					inside = true;
 					break;
 				}
@@ -330,7 +328,7 @@ public:
 
 				if(thisThread != NULL) {
 					// If this thread is not inside, record this threads.
-					object->threads[object->totalThreads] = tid;
+					object->threads[object->totalThreads] = thisThread;
 		
 					fprintf(stderr, "tid is %d\n", tid);	
 					object->totalThreadsAccesses += thisThread->accesses;
@@ -348,7 +346,27 @@ public:
 			checkedWords++;
 
 			// We will stop if we have traverse all words.
-			if(checkedWords == object->words) {
+			if(checkedWords == object->words && object->totalThreads > 0) {
+				thread_t * initialThread = xthread::getInstance().getThreadInfoByIndex(0);
+
+				unsigned long cyclesWithoutFS = (initialThread->latency * 100)/initialThread->accesses;
+				unsigned long predictTotalRuntime = 0;
+				// Now we can compute the performance improvement.
+				object->predictThreadsCycles = (object->totalThreadsAccesses * cyclesWithoutFS)/100;
+				double threadImprove = (double)(object->totalThreadsCycles - object->predictThreadsCycles)/(double)object->totalThreadsCycles;
+							
+				// Check whether involved threads are on the critical path of correponding thread level.
+				unsigned long realRuntime = 0;
+				unsigned long predictRuntime = 0;
+
+				int threadIndex;
+				thread_t * thread = object->threads[0];
+				unsigned long threadLevel = thread->levelIndex;
+
+				// Longest runtime of involved threads in each thread level;
+				unsigned long longestRuntime = thread->actualRuntime;
+					
+				fprintf(stderr, "initialthread cycles %ld predictCycles %ld actualcycles %ld threadImprove %f\n", cyclesWithoutFS, object->predictThreadsCycles, object->totalThreadsCycles, threadImprove); 	
 				break;
 			}
 			
@@ -569,7 +587,8 @@ private:
   char * _end;
   unsigned long * _cacheWrites;
   cachetrack ** _cacheTrackings;
- 
+
+	// Runtime of the whole process with different phases.
   char _curFilename[MAXBUFSIZE];
 };
 

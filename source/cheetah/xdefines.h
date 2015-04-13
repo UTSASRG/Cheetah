@@ -96,7 +96,7 @@ extern "C"
 		struct timeinfo startTime;
 		unsigned long actualRuntime;
 		unsigned long parentRuntime;
-		unsigned long phaseIndex; // In which phase
+		unsigned long levelIndex; // In which phase
 
 		unsigned long latency;
 		unsigned long accesses;

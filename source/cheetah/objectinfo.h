@@ -21,11 +21,13 @@ public:
 	unsigned long totalFSCycles;
 
 	// Find information of involving threads.
-	pid_t threads[xdefines::MAX_ALIVE_THREADS];
+	thread_t * threads[xdefines::MAX_ALIVE_THREADS];
 	unsigned long totalThreads;
 	unsigned long totalThreadsAccesses;
 	unsigned long totalThreadsCycles;
 	unsigned long longestThreadRuntime;
+	unsigned long predictThreadsCycles;
+	double predictImprovement; //Final improvement 
 
   unsigned long * start;
   unsigned long * stop;
