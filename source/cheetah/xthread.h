@@ -100,6 +100,12 @@ public:
     initInitialThread();
   }
 
+	// The end of system. 
+	void finalize(void) {
+		// Stop the last level
+		stopThreadLevelInfo();
+	}
+
 	void insertThreadMap(pid_t tid, thread_t * thread) {
 		fprintf(stderr, "insertThreadMap tid %d\n", tid);
 		threadmap::getInstance().insertThread(tid, thread);
@@ -156,6 +162,8 @@ public:
 		start(&info->startTime);
 		info->beginIndex = threadIndex;
 		info->endIndex = threadIndex;
+		
+		fprintf(stderr, "starting a new thread level\n");
 	}
 	
 	// Start a thread level
@@ -186,6 +194,7 @@ public:
 		thread->index = index;
 		thread->latency = 0;
 		thread->accesses = 0;
+		thread->levelIndex = _threadLevel; 
 		start(&thread->startTime);
 
 	//	fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
