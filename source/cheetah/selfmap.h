@@ -239,7 +239,7 @@ public:
         // Now it is start of global of applications
         getRegionInfo(curentry, &startaddr, &endaddr);
   
-        fprintf(stderr, "Initially, startaddr %p endaddr %p\n", startaddr, endaddr); 
+//        fprintf(stderr, "Initially, startaddr %p endaddr %p\n", startaddr, endaddr); 
         getline(iMapfile, nextentry);
 
         void * newstart;

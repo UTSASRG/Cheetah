@@ -109,7 +109,7 @@ public:
 	}
 
 	void insertThreadMap(pid_t tid, thread_t * thread) {
-		fprintf(stderr, "insertThreadMap tid %d\n", tid);
+//		fprintf(stderr, "insertThreadMap tid %d\n", tid);
 		threadmap::getInstance().insertThread(tid, thread);
 	}
 
@@ -165,7 +165,7 @@ public:
 		info->beginIndex = threadIndex;
 		info->endIndex = threadIndex;
 		
-		fprintf(stderr, "starting a new thread level\n");
+//		fprintf(stderr, "starting a new thread level\n");
 	}
 	
 	// Start a thread level
@@ -174,7 +174,7 @@ public:
 
 		info->elapse = elapsed2ms(stop(&info->startTime, NULL));
 
-		fprintf(stderr, "PHASE end %ld\n", info->elapse);
+//		fprintf(stderr, "PHASE end %ld\n", info->elapse);
 	}
 
 	unsigned long getTotalThreadLevels(void) {
@@ -232,7 +232,7 @@ public:
 			current->childBeginIndex = index;
 			current->childEndIndex = index;
 	
-			fprintf(stderr, "Setting multithreading!!!!!\n");
+//			fprintf(stderr, "Setting multithreading!!!!!\n");
 			// Now we get the elapse of the serial phase	
 			stopThreadLevelInfo();
 			

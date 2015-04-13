@@ -48,7 +48,7 @@ extern "C" {
     initIBS();
     startIBS(0); //master thread
 #endif
-		fprintf(stderr, "Now we have initialized successfuuly\n"); 
+//		fprintf(stderr, "Now we have initialized successfuuly\n"); 
   }
 
   void finalizer (void) {

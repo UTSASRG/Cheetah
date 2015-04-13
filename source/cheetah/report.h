@@ -37,7 +37,7 @@ public:
     int    count;
     void * ptr;
 
-		fprintf(stderr, "report initialize now now!\n");
+//		fprintf(stderr, "report initialize now now!\n");
     if(start == NULL) {
       fprintf(stderr, "start is 0\n");
       while(1) ;
@@ -330,7 +330,7 @@ public:
 					// If this thread is not inside, record this threads.
 					object->threads[object->totalThreads] = thisThread;
 		
-					fprintf(stderr, "tid is %d\n", tid);	
+//					fprintf(stderr, "tid is %d\n", tid);	
 					object->totalThreadsAccesses += thisThread->accesses;
 					object->totalThreadsCycles += thisThread->latency;
 				
@@ -409,8 +409,8 @@ public:
 				}
 				
 				object->predictImprovement = ((double)realTotalRuntime - (double)predictTotalRuntime)/(double)realTotalRuntime; 
-				fprintf(stderr, "totalRuntime %ld predictTotalRuntime %ld\n", realTotalRuntime, predictTotalRuntime);	
-				fprintf(stderr, "initialthread cycles %ld predictCycles %ld actualcycles %ld threadImprove %f predicting improvement %f\n", cyclesWithoutFS, object->predictThreadsCycles, object->totalThreadsCycles, threadImprove, object->predictImprovement); 	
+				fprintf(stderr, "real totalRuntime %ld predicted TotalRuntime %ld\n", realTotalRuntime, predictTotalRuntime);	
+		//		fprintf(stderr, "initialthread cycles %ld predictCycles %ld actualcycles %ld threadImprove %f predicting improvement %f\n", cyclesWithoutFS, object->predictThreadsCycles, object->totalThreadsCycles, threadImprove, object->predictImprovement); 	
 				break;
 			}
 			
