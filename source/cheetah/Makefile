@@ -4,14 +4,11 @@ INCLUDE_DIR = .
 #SOURCE_DIR = source
 #INCLUDE_DIR = include
 
-#SRCS_IBS= $(SOURCE_DIR)/IBS/ibsop.c  
-SRCS_IBS= 
+SRCS_IBS= $(SOURCE_DIR)/IBS/ibsop.c  
 SRCS =  $(SOURCE_DIR)/libdefault.cpp \
 	$(SOURCE_DIR)/libfuncs.cpp         \
 	$(SOURCE_DIR)/finetime.c   \
 	$(SRCS_IBS)  
-#\
-	$(SOURCE_DIR)/IBS/ibsop.c   \
 
 INCS =  $(INCLUDE_DIR)/xdefines.h     \
 	$(INCLUDE_DIR)/selfmap.h         \
@@ -44,8 +41,8 @@ CXX = g++ -g -O2 -I$(INCLUDE_DIR) -I$(INCLUDE_DIR)/detect -I$(INCLUDE_DIR)/heap 
 # -march=core2 -msse3 -DSSE_SUPPORT 
 #CFLAGS   = -Wall -msse3 -DSSE_SUPPORT -fno-omit-frame-pointer
 #CFLAGS   = -fno-omit-frame-pointer -DPREDICTION
-CFLAGS   = -Wno-unused-result -fno-omit-frame-pointer -DPREDICTION -DUSING_SIGUSR2
-#CFLAGS   = -Wno-unused-result -fno-omit-frame-pointer -DUSING_IBS -DPREDICTION -DUSING_SIGUSR2
+#CFLAGS   = -Wno-unused-result -fno-omit-frame-pointer -DPREDICTION -DUSING_SIGUSR2
+CFLAGS   = -Wno-unused-result -fno-omit-frame-pointer -DUSING_IBS -DPREDICTION -DUSING_SIGUSR2
 #-DOUTPUT_WORD_ACCESSES
 #CFLAGS   = -fno-omit-frame-pointer -DPREDICTION -DOUTPUT_WORD_ACCESSES
 #-DIMPROVE_PERF 
@@ -67,8 +64,7 @@ TARGETS = libdefault64.so
 all: $(TARGETS)
 
 libdefault32.so: $(DEPS)
-	$(CXX) $(CFLAGS32) $(INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault32.so  -ldl -lpthread
-#	$(CXX) $(CFLAGS32) $(INCLUDE_DIRS) $(IBS_INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault32.so  -ldl -lpthread
+	$(CXX) $(CFLAGS32) $(INCLUDE_DIRS) $(IBS_INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault32.so  -ldl -lpthread
 
 libdefault64.so: $(DEPS)
 	$(CXX) $(CFLAGS64) $(INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault64.so  -ldl -lpthread 
