@@ -44,19 +44,21 @@ Second, try to maintain a thread local variable to save some thread local inform
 #include "IBS/ibs.h"
 #endif
 
-class xthread {
-private:
-    xthread() 
-    { }
-
-public:
+extern "C" {
 	struct threadLevelInfo {
 		int beginIndex;
 		int endIndex;
 		struct timeinfo startTime;
 		unsigned long elapse;
 	};
+}; 
 
+class xthread {
+private:
+    xthread() 
+    { }
+
+public:
   static xthread& getInstance() {
     static char buf[sizeof(xthread)];
     static xthread * theOneTrueObject = new (buf) xthread();
@@ -173,6 +175,14 @@ public:
 		info->elapse = elapsed2ms(stop(&info->startTime, NULL));
 
 		fprintf(stderr, "PHASE end %ld\n", info->elapse);
+	}
+
+	unsigned long getTotalThreadLevels(void) {
+		return _threadLevel;
+	}
+
+	struct threadLevelInfo * getThreadLevelByIndex(int index) {
+		return &_threadLevelInfo[index];
 	}
 
   // Allocate a thread index under the protection of global lock

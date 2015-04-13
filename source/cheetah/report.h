@@ -350,23 +350,67 @@ public:
 				thread_t * initialThread = xthread::getInstance().getThreadInfoByIndex(0);
 
 				unsigned long cyclesWithoutFS = (initialThread->latency * 100)/initialThread->accesses;
-				unsigned long predictTotalRuntime = 0;
 				// Now we can compute the performance improvement.
 				object->predictThreadsCycles = (object->totalThreadsAccesses * cyclesWithoutFS)/100;
-				double threadImprove = (double)(object->totalThreadsCycles - object->predictThreadsCycles)/(double)object->totalThreadsCycles;
+				double threadImprove = (double)(object->predictThreadsCycles)/(double)object->totalThreadsCycles;
+				object->threadReduceRate = threadImprove;
 							
 				// Check whether involved threads are on the critical path of correponding thread level.
-				unsigned long realRuntime = 0;
-				unsigned long predictRuntime = 0;
+				unsigned long realTotalRuntime = 0;
+				unsigned long predictTotalRuntime = 0;
+				unsigned long threadLevels = xthread::getInstance().getTotalThreadLevels();
 
-				int threadIndex;
-				thread_t * thread = object->threads[0];
-				unsigned long threadLevel = thread->levelIndex;
+				// We actually check all levels.
+				for(int i = 0; i <= threadLevels; i++) {
+					struct threadLevelInfo * levelinfo = xthread::getInstance().getThreadLevelByIndex(i);
+				
+					// Now check whether this level is serial phase or not.
+					realTotalRuntime += levelinfo->elapse;
+					if(levelinfo->beginIndex == levelinfo->endIndex) {
+						// In this situation, index is not actual thread index at all. 
+						predictTotalRuntime += levelinfo->elapse;
+					}
+					else {
+						// Predict how much the performance can be affected by the possible improvement.
+						// In all threads of this level, find out the longest involving thread and 
+						// the longest nonrelated thread.
+						unsigned long involvedLongestRuntime = 0;
+						unsigned long nonrelatedLongestRuntime = 0;
+						for(int j = levelinfo->beginIndex; j <= levelinfo->endIndex; j++) {
+							thread_t * thisThread = xthread::getInstance().getThreadInfoByIndex(j);
+							bool isFound = false;
 
-				// Longest runtime of involved threads in each thread level;
-				unsigned long longestRuntime = thread->actualRuntime;
+							// Compare this thread with all involved threads
+							for(int k = 0; k < object->totalThreads; k++) {
+								if(thisThread == object->threads[k]) {
+									isFound = true;
+									break;
+								}
+							}
+								
+							if(isFound && (involvedLongestRuntime < thisThread->actualRuntime)) {
+								involvedLongestRuntime = thisThread->actualRuntime;
+							}
+							else if((isFound == false) && (nonrelatedLongestRuntime < thisThread->actualRuntime)) {
+								nonrelatedLongestRuntime = thisThread->actualRuntime;
+							}
+						} 	
 					
-				fprintf(stderr, "initialthread cycles %ld predictCycles %ld actualcycles %ld threadImprove %f\n", cyclesWithoutFS, object->predictThreadsCycles, object->totalThreadsCycles, threadImprove); 	
+						// Compute the predict runtime.
+						unsigned long predictThreadRuntime = (unsigned long)((double)involvedLongestRuntime * threadImprove);
+						if(predictThreadRuntime > nonrelatedLongestRuntime) {
+							predictTotalRuntime += predictThreadRuntime;
+						}
+						else {
+							predictTotalRuntime += nonrelatedLongestRuntime;
+						} 	
+					}	
+
+				}
+				
+				object->predictImprovement = ((double)realTotalRuntime - (double)predictTotalRuntime)/(double)realTotalRuntime; 
+				fprintf(stderr, "totalRuntime %ld predictTotalRuntime %ld\n", realTotalRuntime, predictTotalRuntime);	
+				fprintf(stderr, "initialthread cycles %ld predictCycles %ld actualcycles %ld threadImprove %f predicting improvement %f\n", cyclesWithoutFS, object->predictThreadsCycles, object->totalThreadsCycles, threadImprove, object->predictImprovement); 	
 				break;
 			}
 			
@@ -531,7 +575,7 @@ public:
 		// We should check the latency of an object
     fprintf(stderr, "filename %s\n", _curFilename);
     fprintf(stderr, "FALSE SHARING: start %p end %p (with size %lx). Accesses %lx invalidations %lx writes %lx total latency %lx.\n", object->start, object->stop, object->unitlength, object->totalFSAccesses, object->invalidations, object->totalWrites, object->totalFSCycles);
-    fprintf(stderr, "Latency information: totalThreads %ld totalThreadsAccesses %lx totalThreadsCycles %lx longestRuntime %ld\n\n", object->totalThreads, object->totalThreadsAccesses, object->totalThreadsCycles, object->longestThreadRuntime);
+    fprintf(stderr, "Latency information: totalThreads %ld totalThreadsAccesses %lx totalThreadsCycles %lx longestRuntime %ld thread reduce rate %f total improvement rate %f\n\n", object->totalThreads, object->totalThreadsAccesses, object->totalThreadsCycles, object->longestThreadRuntime, object->threadReduceRate, object->predictImprovement);
     if(object->isHeapObject) { 
     fprintf(stderr, "It is a HEAP OBJECT with callsite stack:\n");
       for(int i = 0; i < CALL_SITE_DEPTH; i++) {
