@@ -345,13 +345,14 @@ public:
 			// We will check next word
 			checkedWords++;
 
-			// We will stop if we have traverse all words.
 			if(checkedWords == object->words && object->totalThreads > 0) {
+				// Now we have traversed all words.
 				thread_t * initialThread = xthread::getInstance().getThreadInfoByIndex(0);
 
 				unsigned long cyclesWithoutFS = (initialThread->latency * 100)/initialThread->accesses;
+				
 				// Now we can compute the performance improvement.
-				object->predictThreadsCycles = (object->totalThreadsAccesses * cyclesWithoutFS)/100;
+				object->predictThreadsCycles = object->totalThreadsCycles - object->totalFSCycles + ((object->totalFSAccesses * cyclesWithoutFS)/100);
 				double threadImprove = (double)(object->predictThreadsCycles)/(double)object->totalThreadsCycles;
 				object->threadReduceRate = threadImprove;
 							
