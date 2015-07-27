@@ -23,7 +23,7 @@
 
 #define MAX_FD 1024
 
-extern "C" void handleAccess(pid_t tid, unsigned long addr, size_t size, bool isWrite);
+extern "C" void handleAccess(pid_t tid, unsigned long addr, size_t size, bool isWrite, unsigned long lat);
 
 pid_t
 gettid(void)
@@ -164,7 +164,7 @@ sigio_handler(int sig, siginfo_t* siginfo, void* context)
         ibsopdata3_t *opdata3;
 	uint64_t data3 = 0;
 	uint64_t linear_addr = 0;
-	int lat = 0;
+	unsigned long lat = 0;
 
 	int fd = siginfo->si_fd;
 	pfarg_msg_t msg;
@@ -197,6 +197,9 @@ sigio_handler(int sig, siginfo_t* siginfo, void* context)
 	  pfm_read_pmds(fd, ov->pd, 1);
 	  data3 = ov->pd[0].reg_value;
 	  opdata3 = (ibsopdata3_t *)(&data3);
+	  if((opdata3->reg.ibsldop == 1) && (opdata3->reg.ibsdcmiss == 1)){
+	    lat = opdata3->reg.ibsdcmisslat;
+	  }
 	  if(((opdata3->reg.ibsldop == 1) || (opdata3->reg.ibsstop == 1)) && (opdata3->reg.ibsdclinaddrvalid == 1))
           {
 	    ov->pd[0].reg_num = 12;
@@ -205,17 +208,16 @@ sigio_handler(int sig, siginfo_t* siginfo, void* context)
 	    // exclude kernel addresses
    	    if (!((linear_addr >> 63) & 0x1)) {
               if (opdata3->reg.ibsstop) {
-	        handleAccess(threadid, (unsigned long)linear_addr, 1, true);
+//	        handleAccess(threadid, (unsigned long)linear_addr, 1, true, 0);
+	        handleAccess(gettid(), (unsigned long)linear_addr, 1, true, 0);
 //	        printf("store: addr is %x, thread id is %d\n", linear_addr, threadid);
               }
               else {
-	        handleAccess(threadid, (unsigned long)linear_addr, 1, false);
+//	        handleAccess(threadid, (unsigned long)linear_addr, 1, false, lat);
+	        handleAccess(gettid(), (unsigned long)linear_addr, 1, false, lat);
 //	        printf("load: addr is %x, thread id is %d\n", linear_addr, threadid);
 	      }
             }
-	  }
-	  if((opdata3->reg.ibsldop == 1) && (opdata3->reg.ibsdcmiss == 1)){
-	    lat = opdata3->reg.ibsdcmisslat;
 	  }
         }
 

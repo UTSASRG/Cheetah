@@ -55,7 +55,7 @@ extern "C" {
     initialized = false;
     xrun::getInstance().finalize();
 #ifdef USING_IBS
-    stopIBS(nthreads);
+//    stopIBS(nthreads);
 #endif
   }
 

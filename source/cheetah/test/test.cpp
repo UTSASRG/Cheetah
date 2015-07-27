@@ -9,24 +9,20 @@
 #define NUM_THREADS 8
 
 #define MAX_COUNT 1000000
-//#define MAX_COUNT 1000
-//#define MAX_COUNT 100
 
 unsigned long array[8];
-unsigned long nonshared_array[8];
 
-extern "C" void handleAccess(pid_t tid, unsigned long addr, size_t size, bool isWrite, unsigned long latency);
+//extern "C" void handleAccess(pid_t tid, unsigned long addr, size_t size, bool isWrite);
 
 void *thr_func(void *arg) {
 	unsigned long index = (unsigned long)arg;
 
-//	for (int j = 0; j < 100; j++)
+	fprintf(stderr, "At thread %ld\n", index);
+
+	for (int j = 0; j < 100; j++)
 	for(int i = 0; i < MAX_COUNT; i++) {
 		array[index]++;
-
-	#ifndef USING_IBS
-	//	handleAccess(index, (unsigned long)&array[index], 8, true, 2);
-	#endif
+//		handleAccess(index, (unsigned long)&array[index], 8, true);
 	}
 }
 
@@ -36,30 +32,13 @@ int main(int argc, char *argv[])
 		int rc;
 		pthread_t tid[NUM_THREADS];
 		unsigned long i;
-		int index = 0;
+
 	
 		for(i = 0; i < 8; i++) {
 			array[i] = 0;
-			nonshared_array[i] = 0;
 		}
 
-		// Try to issue non false sharing writes
-	#ifndef USING_IBS
-		for(int i = 0; i < MAX_COUNT; i++) {
-			index++;
-			if(index == 8) {
-				index = 0;
-			}
-			nonshared_array[index]++;
-			//handleAccess(index, (unsigned long)&nonshared_array[index], 8, true);
-//			fprintf(stderr, "main function after initialization\n");
-			handleAccess(0, (unsigned long)&nonshared_array[index], 8, true, 2);
-		}
-	#endif
-
-//	exit(0);
-	//	fprintf(stderr, "Main function, array address %p nonshared_array %p\n", array, nonshared_array);
-  //	exit(0);
+		fprintf(stderr, "Main function after initializing the global array\n");
 		// Creating threads
     for (i=0;i<NUM_THREADS ;i++ )
     {

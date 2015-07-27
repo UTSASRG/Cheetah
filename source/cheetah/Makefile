@@ -67,7 +67,7 @@ libdefault32.so: $(DEPS)
 	$(CXX) $(CFLAGS32) $(INCLUDE_DIRS) $(IBS_INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault32.so  -ldl -lpthread
 
 libdefault64.so: $(DEPS)
-	$(CXX) $(CFLAGS64) $(INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault64.so  -ldl -lpthread 
+	$(CXX) $(CFLAGS64) $(INCLUDE_DIRS) $(IBS_INCLUDE_DIRS) -shared -fPIC -D'CUSTOM_PREFIX(x)=default_##x' $(SRCS) -o libdefault64.so  -ldl -lpthread $(IBS_LINK_DIRS) -lpfm
 #-lpfm
 
 clean:

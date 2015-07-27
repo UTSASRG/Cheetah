@@ -109,8 +109,10 @@ unsigned long elapsed2ms(double elapsed)
 	unsigned long ms;
 //	ms =(unsigned long)(elapsed*1000000.0/cpu_freq);
 	ms =(unsigned long)(elapsed/cpu_freq);
+#if 0
 	if(ms > 5000) {
 		while(1) ;
 	}
+#endif
 	return(ms);
 }

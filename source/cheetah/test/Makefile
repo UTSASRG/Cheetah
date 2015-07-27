@@ -1,5 +1,5 @@
 all:
-	g++ -g -L/home/tongpingliu/falsesharing/cheetah -o test test.cpp -lpthread -ldefault64
+	g++ -g test.cpp -o test -lpthread
 #	g++ -g -DUSING_IBS -L/home/tongpingliu/falsesharing/cheetah -o test test.cpp -lpthread -ldefault64
 
 clean:
