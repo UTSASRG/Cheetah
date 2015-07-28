@@ -58,7 +58,7 @@ using namespace std;
 extern "C" {
   struct wordinfo {
     int         unitsize;
-    int         tid;
+    int         tindex;
     int         reads;
     int         writes;
   };
@@ -68,7 +68,7 @@ class cachetrack {
 public:
 //  enum { WORD_SIZE = 4 };
   enum { WORD_THREAD_SHARED = 0xFFFFFFFF };
-  enum { WORD_THREAD_INIT = xdefines::MAX_THREADS };
+  enum { WORD_THREAD_INIT = (xdefines::MAX_THREADS+1) };
 
   cachetrack(size_t start, unsigned long writes) {
     _cacheStart = start;
@@ -78,8 +78,9 @@ public:
 
     // Set the words information.
     memset(&_words[0], 0, sizeof(struct wordinfo) * xdefines::WORDS_PER_CACHE_LINE); 
+		fprintf(stderr, "_words information at %p\n", &_words[0]); 
     for(int i = 0; i < xdefines::WORDS_PER_CACHE_LINE; i++) {
-      _words[i].tid = WORD_THREAD_INIT; 
+      _words[i].tindex = WORD_THREAD_INIT;
     }
   }
   
@@ -89,14 +90,14 @@ public:
   // Record word access. We are not holding lock since it is impossible to have race condition.
   // Here, if the access is always double word, we do not care about next word. since 
   // the first word's unit size will be DOUBLE_WORD 
-  void recordWordAccess(int tid, void * addr, int bytes, eAccessType type) {
+  void recordWordAccess(int tindex, void * addr, int bytes, eAccessType type) {
     int index = getCacheOffset((size_t)addr);
-    if(tid != _words[index].tid) {
-      if(_words[index].tid == WORD_THREAD_INIT) {
-        _words[index].tid = tid;
+    if(tindex != _words[index].tindex) {
+      if(_words[index].tindex == WORD_THREAD_INIT) {
+        _words[index].tindex = tindex;
       }
-      else if(_words[index].tid != WORD_THREAD_SHARED) {
-        _words[index].tid = WORD_THREAD_SHARED;
+      else if(_words[index].tindex != WORD_THREAD_SHARED) {
+        _words[index].tindex = WORD_THREAD_SHARED;
       }
     }
     _words[index].unitsize = bytes;
@@ -135,7 +136,7 @@ public:
     unsigned long i;
     for(i = 0; i < xdefines::WORDS_PER_CACHE_LINE; i++) {
       if(_words[i].writes > xdefines::THRESHOLD_HOT_ACCESSES || _words[i].reads > xdefines::THRESHOLD_HOT_ACCESSES) { 
-        fprintf(stderr, "Word %ld: address %lx reads %x writes %x thread %d\n", i, (unsigned long)_cacheStart + i * xdefines::WORD_SIZE, _words[i].reads, _words[i].writes, _words[i].tid);
+        fprintf(stderr, "Word %ld: address %lx reads %x writes %x thread %d\n", i, (unsigned long)_cacheStart + i * xdefines::WORD_SIZE, _words[i].reads, _words[i].writes, _words[i].tindex);
       }
     } 
 
@@ -166,7 +167,7 @@ public:
 
   // Main function to handle each access for a potential cache line (writes larger than 
   // a pre-defined threshold).  
-  void handleAccess(pid_t tid, void * addr, int bytes, eAccessType type, unsigned long latency) {
+  void handleAccess(int tindex, void * addr, int bytes, eAccessType type, unsigned long latency) {
 		// Updating the number of accesses and the latency information
 		atomic_add(1, (volatile unsigned long *)&_accesses);
 		atomic_add(latency, (volatile unsigned long *)&_latency);
@@ -175,9 +176,9 @@ public:
  
     // Check whether we need to sample this lines accesses now.
     int wordindex = getCacheOffset((size_t)addr);
-   
+  
     // Record the detailed information of this accesses.
-    recordWordAccess(tid, addr, bytes, type);
+    recordWordAccess(tindex, addr, bytes, type);
 
     // Update the writes information 
     if(type == E_ACCESS_WRITE) {
@@ -185,7 +186,7 @@ public:
     }
 
     // Check whether we will have an invalidation
-    _thisCache.handleAccess(tid, (char *)addr, type);
+    _thisCache.handleAccess(tindex, (char *)addr, type);
   }
 
   cacheinfo * getCacheinfo(void) {

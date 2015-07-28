@@ -474,17 +474,51 @@ public:
       // We are tracking word-by-word to find the objec theader.  
       if(*pos == objectHeader::MAGIC) {
         objectHeader * object = (objectHeader *)pos;
+        unsigned long  objectStart = (unsigned long)object->getObjectStart();
+        unsigned long  objectOffset = objectStart;
+        unsigned long  objectEnd = (unsigned long)object->getObjectEnd();
+        unsigned long  cacheStart = getCacheStart((void *)objectStart);
         
         // Checking whether the identification of an object is valid or not
-        if(isInvalidIdentification((char *)object->getObjectEnd())) {
+        if(isInvalidIdentification((char *) objectEnd)) {
             pos++;
             continue;
         }
 
-				// Report this heap object if possible. 
-				checkAndReportObject(true, object->getCallsiteAddr(), (unsigned long)object->getObjectStart(), object->getSize());
+        // Calculate how many cache lines are occupied by this object.
+        int   cachelineIndex = getCacheline(objectOffset); 
+        int   lines = getCoveredCachelines(cacheStart, objectEnd);
+ 
+//    	fprintf(stderr, "reportHeapObjects pos %p memend %p\n", pos, memend); 
+        // Check whether there are some invalidations on this object.
+        bool hasFS = false;
+        ObjectInfo objectinfo;
+        objectinfo.isHeapObject = true;
+        objectinfo.winfo = NULL;
+        objectinfo.unitlength = object->getSize();
+        objectinfo.words = objectinfo.unitlength/xdefines::WORD_SIZE;
+        objectinfo.start = (unsigned long *)objectStart;
+        objectinfo.stop = (unsigned long *)objectEnd;
+
+ 				// We will get the actual cache invalidation information on this object and save it
+				// to the objectinfo object.
+        hasFS = getCacheInvalidations(cachelineIndex, lines, &objectinfo);
+ 
+//    	fprintf(stderr, "reportHeapObjects pos %p memend %p\n", pos, memend); 
+        // Whenever interleaved writes is larger than the specified threshold
+        if(objectinfo.invalidations > xdefines::THRESHOLD_REPORT_INVALIDATIONS) {
+          // Save object information.
+          memcpy((void *)&objectinfo.u.callsite, object->getCallsiteAddr(), sizeof(CallSite));
+          reportFalseSharingObject(&objectinfo);
+        }
+       
+				// after reporting, we can release the memory for winfo. 
+        if(objectinfo.winfo) {
+         // fprintf(stderr, "objectinfo.winfo %p before free\n", objectinfo.winfo);
+          InternalHeap::getInstance().free(objectinfo.winfo);
+        }
           
-        pos = (unsigned long *)object->getObjectEnd();
+        pos = (unsigned long *)objectEnd;
         continue;
       } 
       else {
@@ -494,7 +528,7 @@ public:
   }
 
 	// The common function to report an object.
-	void checkAndReportObject(bool isHeap, void * optional, unsigned long objectStart, size_t objectSize) {
+	void reportThisObject(bool isHeap, void * optional, void * objectStart, size_t objectSize) {
 		  // heaporglobal, objectStart (objectOffset), objectSize, 
 			size_t objectOffset = objectStart;
       unsigned long objectEnd = objectStart + objectSize;
@@ -506,7 +540,6 @@ public:
 			// Check whether there are some invalidations on this object.
       ObjectInfo objectinfo;
       objectinfo.isHeapObject = isHeap;
-			objectinfo.winfo = NULL;
       objectinfo.unitlength = objectSize;
       objectinfo.words = objectSize/xdefines::WORD_SIZE;
       objectinfo.start = (unsigned long *)objectStart;
@@ -518,11 +551,11 @@ public:
       // Since there is no accumulation for global objects.
       if(objectinfo.invalidations > xdefines::THRESHOLD_REPORT_INVALIDATIONS) {
 				if(!isHeap) {
-        	objectinfo.u.symbol = optional;
+        	objectinfo.u.symbol = (void *)symbol;
 				}
 				else {
 					// Save object information.
-          memcpy((void *)&objectinfo.u.callsite, optional, sizeof(CallSite));
+          memcpy((void *)&objectinfo.u.callsite, object->getCallsiteAddr(), sizeof(CallSite));
 				}
         reportFalseSharingObject(&objectinfo);
       }
@@ -539,7 +572,7 @@ public:
     Elf_Ehdr *hdr = elf->hdr;
     Elf_Sym *symbol;
 
-   //fprintf(stderr, "reportGlobalObjects now. globalstart %lx globalend %lx\n", globalStart, globalEnd);
+   fprintf(stderr, "reportGlobalObjects now. globalstart %lx globalend %lx\n", globalStart, globalEnd);
     for (symbol = elf->symtab_start; symbol < elf->symtab_stop; symbol++) {
       if(symbol == NULL) {
         continue;
@@ -561,8 +594,8 @@ public:
         continue;
       }
 
-			// Report this object 
-			checkAndReportObject(false, symbol, objectStart, objectSize);
+      size_t objectOffset = objectStart;
+      unsigned long objectEnd = objectStart + objectSize;
   
     }
   }

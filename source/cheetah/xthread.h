@@ -38,7 +38,6 @@ Second, try to maintain a thread local variable to save some thread local inform
 
 #include "xdefines.h"
 #include "finetime.h"
-#include "threadmap.h"
 
 #ifdef USING_IBS
 #include "IBS/ibs.h"
@@ -95,9 +94,6 @@ public:
 		// Set this thread level information to 0.
 		memset(&_threadLevelInfo, 0, sizeof(struct threadLevelInfo)*xdefines::MAX_THREAD_LEVELS);
 
-		// Initialize the threadmap.
-		threadmap::getInstance().initialize();
-
     // Allocate the threadindex for current thread.
     initInitialThread();
   }
@@ -108,23 +104,6 @@ public:
 		stopThreadLevelInfo();
 	}
 
-	void insertThreadMap(pid_t tid, thread_t * thread) {
-//		fprintf(stderr, "insertThreadMap tid %d\n", tid);
-		threadmap::getInstance().insertThread(tid, thread);
-	}
-
-	void removeThreadMap(pthread_t tid) {
-		threadmap::getInstance().removeThread(tid);
-	}
-
-	void removeThreadMap(thread_t * thread) {
-		removeThreadMap(thread->self);
-	}
-
-	thread_t * getThreadInfoByTid(pthread_t tid) {
-		return threadmap::getInstance().getThreadInfo(tid);
-	}
-
   // Initialize the first threadd
   void initInitialThread(void) {
     int tindex;
@@ -133,17 +112,18 @@ public:
     current = getThreadInfoByIndex(0);
 
      // Allocate a global thread index for current thread.
-    tindex = allocThreadIndex( );
+    tindex = allocThreadIndex();
 
 		assert(tindex == 0);
 
     // Get corresponding thread_t structure.
     current->self  = pthread_self();
     current->tid  = gettid();
-		insertThreadMap(current->tid, current);
   }
 
   thread_t * getThreadInfoByIndex(int index) {
+		assert(index < xdefines::MAX_THREADS);
+
     return &_threads[index];
   }
 
@@ -188,10 +168,10 @@ public:
   // Allocate a thread index under the protection of global lock
   int allocThreadIndex(void) {
 		global_lock();
+
 		int index = _threadIndex++;
 		int alivethreads = _aliveThreads++;
 
-	//	fprintf(stderr, "allocThreadIndex in the beginning, with index %d alivethread %d\n", index, alivethreads);
 		// Check whether we have created too many threads or there are too many alive threads now.
     if(index >= xdefines::MAX_THREADS || alivethreads >= xdefines::MAX_ALIVE_THREADS) {
       fprintf(stderr, "Set xdefines::MAX_THREADS to larger. _alivethreads %ld totalthreads %ld maximum alive threads %d", _aliveThreads, _threadIndex, xdefines::MAX_ALIVE_THREADS);
@@ -200,14 +180,12 @@ public:
 
 		// Initialize 
     thread_t * thread = getThreadInfoByIndex(index);
-		thread->ptid = gettid();
+		thread->ptid = gettid(); //parent tid information
 		thread->index = index;
 		thread->latency = 0;
 		thread->accesses = 0;
 		thread->levelIndex = _threadLevel; 
 		start(&thread->startTime);
-
-	//	fprintf(stderr, "allocThreadIndex line %d\n", __LINE__);
 
 		// Now find one available heapid for this thread.
 		thread->heapid = allocHeapId();
@@ -232,8 +210,7 @@ public:
 			current->childBeginIndex = index;
 			current->childEndIndex = index;
 	
-//			fprintf(stderr, "Setting multithreading!!!!!\n");
-			// Now we get the elapse of the serial phase	
+			// Now we need to get the elapse of the serial phase	
 			stopThreadLevelInfo();
 			
 			// Now we are entering into a new level
@@ -351,18 +328,12 @@ public:
     current->self = pthread_self();
 		current->tid = gettid();
 
-		// Insert myself into the thread map.
-		xthread::getInstance().insertThreadMap(current->tid, current);
-		//insertThreadMap(current->tid, current);
-		
     // from the TLS storage.
     result = current->startRoutine(current->startArg);
 
 		// Get the stop time.
 		current->actualRuntime = elapsed2ms(stop(&current->startTime, NULL));
 
-//		fprintf(stderr, "runtime of thread %ld %ld\n", current->self, current->actualRuntime);
-  
     return result;
   }
 	

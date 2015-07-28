@@ -51,7 +51,6 @@
 #include "internalheap.h"
 #include "spinlock.h"
 #include "report.h"
-#include "threadmap.h"
 #include "mm.h"
 
 class xmemory {
@@ -301,20 +300,16 @@ public:
     return hasSuspect;
   }
 
-  inline cachetrack * allocCacheTrack(pid_t tid, unsigned long addr, unsigned long totalWrites) {
-		// Now we have to get heapid from the tid
-		int heapid = getHeapIdByTid(tid);
-
-    void * ptr = InternalHeap::getInstance().malloc(heapid, sizeof(cachetrack));
+  inline cachetrack * allocCacheTrack(unsigned long addr, unsigned long totalWrites) {
+    void * ptr = InternalHeap::getInstance().malloc(getHeapId(), sizeof(cachetrack));
 		//fprintf(stderr, "addr %lx totalWrites %lx ptr %p\n", addr, totalWrites, ptr);
     cachetrack * track = new (ptr) cachetrack(addr, totalWrites);
     return track;
   }
 
-  inline cachetrack * deallocCacheTrack(pid_t tid, cachetrack * track) {
-		int heapid = getHeapIdByTid(tid);
+  inline cachetrack * deallocCacheTrack(cachetrack * track) {
 		// Now we have to get heapid from the tid
-    InternalHeap::getInstance().free(heapid, track);
+    InternalHeap::getInstance().free(getHeapId(), track);
   }
 
   // In order to track one cache line, we should make the _cacheWrites larger than the specified threshold.
@@ -370,11 +365,11 @@ public:
     // Only one of them has hot writes
     if(word1->writes >= xdefines::THRESHOLD_HOT_ACCESSES 
       || word2->writes >= xdefines::THRESHOLD_HOT_ACCESSES) {
-      if(word1->tid != word2->tid) {
+      if(word1->tindex != word2->tindex) {
         arePotentialFS = true;
       }
-      else if(word1->tid == cachetrack::WORD_THREAD_SHARED 
-        || word2->tid == cachetrack::WORD_THREAD_SHARED) {
+      else if(word1->tindex == cachetrack::WORD_THREAD_SHARED 
+        || word2->tindex == cachetrack::WORD_THREAD_SHARED) {
         arePotentialFS = true;
       }
     }
@@ -393,19 +388,19 @@ public:
   }
 
 
-  inline void allocateCachetrack(pid_t tid, unsigned long index) {
+  inline void allocateCachetrack(unsigned long index) {
     size_t cachestart = index << CACHE_LINE_SIZE_SHIFTS;
     cachetrack * track = NULL;
-    track = allocCacheTrack(tid, cachestart, xdefines::THRESHOLD_TRACK_DETAILS);
+    track = allocCacheTrack(cachestart, xdefines::THRESHOLD_TRACK_DETAILS);
     // Set to corresponding array.
     //fprintf(stderr, "allocCacheTrack index %ld at %p set to %p\n", index, &_cacheTrackings[index], track);
     if(!atomic_compare_and_swap((unsigned long *)&_cacheTrackings[index], 0, (unsigned long)track)) {
-      deallocCacheTrack(tid, track);
+      deallocCacheTrack(track);
     }
   }
  
   // Main entry of handle each access
-  inline void handleAccess(pid_t tid, unsigned long addr, int bytes, bool isWrite, unsigned long latency) {
+  inline void handleAccess(int tindex, unsigned long addr, int bytes, bool isWrite, unsigned long latency) {
     // Xu Liu: Disable the error output from this checking. Hardware sampling check obtain samples from addresses ranges out of the monitored code space.
     if((intptr_t)addr > MAX_USER_SPACE) {
 //	 		PRERR("the address seems not right. It should not be larger than %lx\n", MAX_USER_SPACE);
@@ -421,7 +416,8 @@ public:
 			return;
 		}
 
-	//	fprintf(stderr, "handleAccess at line %d tid %d\n", __LINE__, tid);
+		if(tindex > 16) 
+		fprintf(stderr, "handleAccess at line %d tid %d\n", __LINE__, tindex);
 
     // We only care those acesses of global and heap.
     unsigned long index = getCachelineIndex(addr);
@@ -451,7 +447,7 @@ public:
         if(atomic_increment_and_return(status) == xdefines::THRESHOLD_TRACK_DETAILS-1) {
           size_t cachestart = getCacheStart((void *)addr);
 				//	fprintf(stderr, "index is at %ld cachestart %lx\n", index, cachestart);
-          track = allocCacheTrack(tid, cachestart, xdefines::THRESHOLD_TRACK_DETAILS);
+          track = allocCacheTrack(cachestart, xdefines::THRESHOLD_TRACK_DETAILS);
 			//		fprintf(stderr, "index is at %ld, track %p\n", index,  track);
 
           // Set to corresponding array.
@@ -468,7 +464,7 @@ public:
           PRERR("Not a valid track %p, it should be larger than %x\n", track, xdefines::THRESHOLD_TRACK_DETAILS);
         }
         assert((intptr_t)track > xdefines::THRESHOLD_TRACK_DETAILS);
-        track->handleAccess(tid, (void *)addr, bytes, type, latency);
+        track->handleAccess(tindex, (void *)addr, bytes, type, latency);
       } 
     }
   }
@@ -478,16 +474,6 @@ private:
     objectHeader * o = (objectHeader *) ptr;
     return (o - 1);
   }
-
-	thread_t * getThread(pid_t tid) {
-		return threadmap::getInstance().getThreadInfo(tid);
-	}
-
-	int getHeapIdByTid(pid_t tid) {
-		thread_t * thread = getThread(tid);
-		
-		return thread->heapid;
-	}
 
   /// The protected heap used to satisfy big objects requirement. Less
   /// than 256 bytes now.
