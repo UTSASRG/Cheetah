@@ -369,7 +369,10 @@ public:
 				// Now we have traversed all words.
 				thread_t * initialThread = xthread::getInstance().getThreadInfoByIndex(0);
 
-				unsigned long cyclesWithoutFS = (initialThread->latency * 100)/initialThread->accesses;
+				//FIXME: what if initialThread is 0????
+ 				unsigned long cyclesWithoutFS;
+				if(initialThread->accesses != 0) 
+				 	cyclesWithoutFS = (initialThread->latency * 100)/initialThread->accesses;
 				
 				// Now we can compute the performance improvement.
 				object->predictThreadsCycles = object->totalThreadsCycles - object->totalFSCycles + ((object->totalFSAccesses * cyclesWithoutFS)/100);
