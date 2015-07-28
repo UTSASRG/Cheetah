@@ -34,7 +34,7 @@ Detecting false sharing problems needs special tools but existing false sharing 
 
 \item Leveraging on hardware performance counters, \cheetah{} significantly reduces the performance overhead of detection, with only 5\% average performance overhead and 10\% maximum overhead. The performance overhead is similar to recent work~\cite{mldetect, openmp}, but with more precise information and more effectiveness.
   
-\item Different with all existing tools, \Cheetah{} can predict the performance improvement after fixes based on latency information provided by performance counters. Based on that, \Cheetah{} can avoid reporting those insignificant problems, further reducing programmers burden. 
+\item Different with all existing tools, \Cheetah{} can predict the performance impact of false sharing instances based on latency information provided by performance monitoring units. By ruling out non-important cases, \Cheetah{} can avoid unnecessary manual effort as much as possible. 
 
 \end{itemize}
 

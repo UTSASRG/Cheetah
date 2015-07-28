@@ -3,7 +3,7 @@
 \subsection{Background of False Sharing}
 \label{sec:background}
 
-In the multicore era, multithreading is the basic way to utilize underlying hardware cores by running different threads on different cores. When a thread modifies data of a cache line, the underlying cache coherence protocol (inside hardware) silently invalidates the duplicates of this cache line on other cores. This is to guarantee correct executions for true sharing instances like that shown in Figure~\ref{fig:tsinfs}. However, for false sharing case (e.g. Figure~\ref{fig:fsinfs}), these invalidations are totally unnecessary when different tasks are actually accessing different words of the same line. Cache invalidations may force other cores to wait for reloading of data unnecessarily, wasting CPU time and precious memory bandwidth. A big amount of unnecessary cache invalidations can hugely affect the performance of software. %Thus, it is urgent to develop some tools and systems to tackle with this problem. 
+In the multicore era, multithreading is the basic way to utilize underlying hardware cores by running different threads on different cores concurrently. When a thread modifies data of a cache line, the underlying cache coherence protocol (inside hardware) silently invalidates the duplicates of this cache line on other cores. This is to guarantee correct executions for true sharing instances like that shown in Figure~\ref{fig:tsinfs}. However, for false sharing case (e.g. Figure~\ref{fig:fsinfs}), these cache invalidations are totally unnecessary when different tasks are actually accessing different words of the same line. Cache invalidations may force other cores to wait for reloading of data unnecessarily, wasting CPU time and precious memory bandwidth. A big amount of unnecessary cache invalidations can hugely affect the performance of software. %Thus, it is urgent to develop some tools and systems to tackle with this problem. 
 
 \begin{figure}[htbp]
 \centering
@@ -28,7 +28,7 @@ Common programming practice can easily introduce false sharing. For example, dif
 % What is the basic idea? Why those ones uses performance counters can not reveal false sharing problems? 
 \cheetah{} aims to report both read-write and write-write false sharing that may have performance impact, where a large number of cache invalidations occur on those cache lines. However, it is not easy to know whether a cache line is invalidated or not, without the complete information of cache hierarchy and different threads' running situation. 
 
-\cheetah{} eliminates the need for knowing cache hierarchy and running information of threads. \cheetah{} computes the number of cache invalidations according to a basic rule: {\it \bf if a task writes a cache line after other tasks have accessed this cache line, this write operation causes a cache invalidation}. To make it true, \cheetah{} further makes the following \textbf{two basic assumptions}, which is similar to previous work~\cite{qinzhao, Predator}.
+\cheetah{} eliminates the need for knowing cache hierarchy and running information of threads. \cheetah{} computes the number of cache invalidations according to a basic rule: {\it \bf if a thread writes a cache line after other threads have accessed the same cache line, this write operation causes a cache invalidation}. To make it true, \cheetah{} further makes the following \textbf{two basic assumptions}, which is similar to previous work~\cite{qinzhao, Predator}.
 
 \begin{itemize} 
 \item {\bf Assumption 1:} Each task runs on a separate core with its own cache. 
@@ -37,9 +37,12 @@ Common programming practice can easily introduce false sharing. For example, dif
  
 \end{itemize}
 
-Assumption 1 is a reasonable assumption since different tasks can run on a separate core, even if they may not in a given execution. Given this assumption, we do not need to know the actual running condition of different tasks. After we assume that different cores have their own cache (at least L1 cache), we can avoid the complexity of knowing actual cache hierarchy. 
+Assumption 1 is a reasonable assumption since different tasks can run on a separate core, even if they may not in a given execution.  If multiple threads are actually running on the same core, false sharing may cause lower performance penalty. That means, assumption 1 actually presents the worse scenario for a given false sharing. This assumption provides the following benefits: there is no need to know the actual situation where a thread is running by assuming different threads are running on different cores; there is no need to know actual cache hierarchy by assuming different cores having their own cache (at least L1). 
 
-Assumption 2 further assumes that the sizes of caches are infinite. Thus, we do not need to track cache evictions. If there is a memory access within a cache line, this cache always holds the data until an access of other tasks (running on other cores) invalidates it. Because a memory access of a task will load this cache line on its own cache (assumption 1), then a write from a different task can invalidate this cache line. Thus, the basic rule described above is always valid given these two assumptions.  
+Assumption 2 further assumes that the sizes of caches are infinite. If there is a memory access within a cache line, the hardware cache (of running this thread) always holds the data until an access of other threads (running on other cores by assumption 1) invalidates it. Thus, there is no need to track cache evictions that are caused by cache capacity. 
+
+Combining with these two assumptions, \cheetah{} can practically compute the number of cache validations simply by checking the pattern of memory accesses without knowing the actual running condition of different threads or cache hierarchy: if a memory access of a task will load this cache line on its own cache (assumption 1), then a write from a different task can invalidate this cache line. 
+%This idea is very similar to Predator~\cite{Predator}. \Cheetah{} will rely on hardware-performance counters to reduce performance overhead of detection, instead of a instrumentation-based approach~\cite{Predator}. 
 
  
 % This idea is similar to Predator. But Predator is a compiler-based approach, which needs to change the source code of applications. Also, it introduces much performance overhead that can block its use in deployment environment. 
@@ -50,25 +53,25 @@ Assumption 2 further assumes that the sizes of caches are infinite. Thus, we do 
 \subsubsection{Sampling Memory Accesses}
 \label{sec:perfcounter}
 
-According to the basic rule described in Section~\ref{sec:basicidea}, we should track memory accesses in order to compute the number of cache invalidations on each cache line. 
+According to the basic rule described in Section~\ref{sec:basicidea}, we should track memory accesses of different threads in order to compute the number of cache invalidations on each cache line. 
 
+The previous work \Predator{} leverages on compiler instrumentation to insert function calls before every memory access that is going to handled by \Predator{}'s runtime system~\cite{Predator}. However, this approach introduces more than $5\times$ performance overhead by handling every memory access. More than that, \Predator{} has to re-compile applications, which needs the availability of source code. \Predator{} is not desirable for legacy applications or real deployment that is sensitive to performance. 
 
-Previous work \Predator{} leverages on compiler instrumentation to insert function calls before every memory access that is going to handled by \Predator{}'s runtime system~\cite{Predator}. However, this approach introduces more than $5\times$ performance overhead by tracking every memory access. More than that, \Predator{} has to re-compile applications, which needs the availability of source code. \Predator{} is not desirable for legacy applications or real deployment that is sensitive to performance. 
+\cheetah{} aims to significantly reduce the performance overhead by leveraging hardware performance counters that are available on most modern hardware. Hardware performance counters provide sampling-based memory access information about how the hardware is being exercised by a program, such as read/write operations, memory addresses, threads~\cite{Mucci99papi}. These information is enough to compute the number of cache invalidations based on the basic rule that is described in Section~\ref{sec:basicidea}. Because hardware performance counter only samples a memory access out of a specified number, it doesn't pose significant performance overhead. 
+Besides that, using performance counters does not need to instrument source code explicitly, thus providing a non-intrusive way to monitor memory references. 
 
-\cheetah{} aims to significantly reduce the performance overhead of tracking memory accesses by leveraging hardware performance counters that are available on most modern hardware. Hardware performance counters can provide sampling based information about how the hardware is being exercised by a program, which have been utilized widely for different purposes~\cite{Mucci99papi}. Performance counters were also utilized by previous work to identify false sharing problems. But existing work suffered from different problems, which has been discussed in Section~\ref{sec:relatedwork}. All of them can not differentiate false sharing with true sharing. 
- 
-Using performance counters does not need to instrument source code explicitly, thus providing a non-intrusive way to monitor memory references. 
-Different with previous tools ~\cite{mldetect, openmp, detect:ptu}, \cheetah{} only needs sample memory read and write accesses and relies on the basic rule that are discussed in Section~\ref{sec:basicidea} to track the number of cache invalidations on every cache line. \Cheetah{} relies on AMD's IBS registers to track specific memory accesses. The details of tracking cache invalidations is discussed in Section~\ref{sec:computeinvalidations}. 
+\cheetah{} is different with existing approaches using hardware performance counters in the same field~\cite{mldetect, openmp, detect:ptu}. Jayasena et. al. collects different types of events like memory accesses, data caches, TLBs, interactions among cores, and resources stalls, and derives potential memory patterns that can cause false sharing~\cite{mldetect}. DARWIN collects cache coherence events at first, then identifies possible memory accesses on those data structures that are involved in frequent cache invalidations ~\cite{openmp}. PTU actually relies on memory sampling mechanism but can not differentiate false sharing and true sharing since it discards the temporal information of memory accesses~\cite{detect:ptu}. More details on the difference have been discussed in Section~\ref{sec:relatedwork}.
+
 
 \subsubsection{Computing Cache Invalidations}
 \label{sec:computeinvalidations}
 
-\Cheetah{} targets to report false sharing that can have performance impact on applications. Since a big number of cache invalidations are the culprit of performance problems, \Cheetah{}  computes the number of cache invalidations on each cache line and reports those ones with a significant number of cache invalidations.  
+\Cheetah{} targets to report false sharing that can have performance impact on applications. \Cheetah{} focuses on those false sharing problems with a significant number of cache invalidations.  
 
-Qin Zhao et. al. propose to compute the number of cache invalidations based on the ownership of cache lines: when a thread updates an object that it does not own, it will cause cache invalidations and set the owner to the current thread~\cite{qinzhao}. However, this approach cannot be easily to scalable to more than 32 threads because of excessive memory consumption, where every word of memory will at least occupy a 32-bits word for tracking ownership, and performance overhead of maintaining ownership of cache lines. Instead, \Cheetah{} utilizes a similar mechanism as \Predator{}~\cite{Predator}. 
+Qin Zhao et. al. propose to compute the number of cache invalidations based on the ownership of cache lines: when a thread updates an object that it does not own, it will cause cache invalidations and set the owner to the current thread~\cite{qinzhao}. However, this approach cannot be easily to scalable to more than 32 threads because of excessive memory consumption, where every word of memory will at least occupy a 32-bits word for tracking ownership of a cache line. Also it introduce significant performance overhead by maintaining ownership of different cache lines. 
 
-\cheetah{} maintains a two-entries-table ($T$) for each cache line ($L$), where each entry tracks accesses from a thread. It also keeps a counter for every cache line that indicates the number of cache invalidation on this cache line.  
-According to the basic rule that are described in Section~\ref{sec:basicidea}, only a write access can cause cache invalidation. When there is a cache invalidation, the current write access will flush the table and will be added into its corresponding table ($T$). Thus, a table will always have an entry except in the beginning. More specifically, \cheetah{} checks possible cache invalidations as follows.
+To overcome these shortcomings, \Cheetah{} maintains a two-entries-table ($T$) for each cache line ($L$), where each entry tracks accesses from one thread. This mechanism is borrowed from Predator~\cite{Predator}. \Cheetah{} keeps a counter for every cache line that indicates the number of cache invalidations on this cache line.  
+According to the basic rule that are described in Section~\ref{sec:basicidea}, only a write access can cause a cache invalidation. When there is a cache invalidation, the current write access will flush the table and will be added into its corresponding table ($T$). Thus, a table will always have an entry except in the beginning. More specifically, \cheetah{} checks possible cache invalidations as follows.
  
 \begin{itemize}
 \item
@@ -77,7 +80,7 @@ According to the basic rule that are described in Section~\ref{sec:basicidea}, o
     \item
       If $T$ is full, there is no need to record this read access.
     \item
-      If $T$ is not full and the existing entry has a different task ID, 
+      If $T$ is not full and the existing entry has a different thread ID, 
       then \cheetah{} records this read access by adding a new entry to the table.
   \end{itemize}
 \item
@@ -94,41 +97,28 @@ According to the basic rule that are described in Section~\ref{sec:basicidea}, o
 
       
 After the computation, 
-%\cheetah{} ranks the severity of performance degradation of any detected false sharing problems according to the number of cache invalidations. 
-\cheetah{} only reports those false sharing problems that can have a significant impact on the performance by predicting the upper bound of performance improvement, according to the idea that are discussed in Section~\ref{sec:predictimprovement}.  It will rank the severity of performance degradation of any detected false sharing problems based on the predicted performance improvement after fixes.
+\cheetah{} ranks the severity of performance degradation of any detected false sharing problems according to the number of cache invalidations and the performance impact of a specific false sharing problem, which is discussed in the following section.  
+%\cheetah{} only reports those false sharing problems that can have a significant impact on the performance by predicting the upper bound of performance improvement, according to the idea that are discussed in Section~\ref{sec:predictidea}.  It will rank the severity of performance degradation of any detected false sharing problems based on the predicted performance improvement after fixes.
 
-\subsection{Basic Idea of Predicting Performance Improvement}
-\label{sec:predictimprovement}
+\subsection{Basic Idea of Predicting Performance Impact}
+\label{sec:predictidea}
 
-\paragraph{Current problem:} Existing tools cannot predict whether fixing a false sharing problem can improve the performance or not~\cite{sheriff, Predator, openmp}. They might report some insignificant false sharing problems even when the number of cache invalidations on a cache line is over a pre-defined threshold. For example, all of these tools report an false sharing problem at reverse\_index application of the Phoenix benchmark suite but there is no significant performance improvement after fixing it. Unnecessary false sharing instances are not false positives, but reporting them increases burden for programmers and will not bring the performance improvement after fixes. Different with all existing tools, \Cheetah{} only reports false sharing problems that can have performance impact based on its prediction of performance improvement.  
+\paragraph{Current problem:} None of existing tools can predict the performance impact of false sharing instances~\cite{sheriff, Predator, openmp}. At most, they can report the number of cache invalidations caused by a particular false sharing problem. Unfortunately, the number of cache invalidations does not equal to the potential performance impact after fixing. Thus, existing tools reported some insignificant false sharing problems. For example, fixing reported false sharing in reverse\_index brings less than 1\% performance improvement~\cite{sheriff, Predator}. Insignificant false sharing instances are not false positives, but reporting them increases manual burden for programmers and brings no performance benefit. 
 
-{\bf \Cheetah{} is the first tool that can predict performance improvement after fixes}, which utilizes the latency information (e.g. cycles) of every memory access that can be provided by either Intel's PEBS registers or AMD's IBS registers. \Cheetah{} considers the sum of cycles to be the running time. \Cheetah{} further use the sampling result to represent the whole execution, which is reasonable given that sampling is evenly distributed among the whole execution. 
-%Note that it is difficult or even impossible to precisely predict the performance improvement after fixes. For example, sharing of cache lines can be different or fixing a false sharing may introduce performance variance. 
+\Cheetah{} aims to only report false sharing problems that will have significant performance improvement after fixes. \Cheetah{} utilizes the latency information (e.g. cycles) of every memory access that can be provided by performance monitoring units, either Intel's PEBS registers or AMD's IBS registers. 
 
-\Cheetah{} aims to predict a upper bound of performance improvement percentage, but not an absolute value of time saving. We believe that this is more valuable since programmers can only focus on false sharing problems that fixing them can bring the performance improvement, e.g., with more than 2\% performance improvement.   
+To predict the performance impact, \Cheetah{} first assumes that the sampling results represent the whole execution, which is reasonable given that sampling is evenly distributed among the whole execution. Since performance monitoring units can only provide the latency information of cycles, \Cheetah{} uses the sum of cycles to represent the running time in the prediction.  
 
-According to our understanding, the actual runtime (denoted as $Runtime_{real}$) is the sum of the actual runtime spending on the current object ($Runtime_{obj\_real}$) and the actual runtime spending on other objects or variables ($Runtime_{others\_real}$). Because of this, we will have the EQ.(\ref{eq:actual}). 
-
-\begin{equation}
-\label{eq:actual}
-Runtime_{real}=Runtime_{obj\_real} + Runtime_{others\_real}
-\end{equation} 
-
-{\it We further assume that fixing an false sharing problem will not introduce performance impact on other variables or objects}. If we fix false sharing of an object, the predicted runtime after fixing ($Runtime_{pred}$) is the sum of the predicted time spending on the current object ($Runtime_{obj\_pred}$) and the actual runtime spending on other objects or variables ($Runtime_{others\_real}$), we will have the EQ.(\ref{eq:pred}). 
-
-\begin{equation}
-\label{eq:pred}
-Runtime_{pred}=Runtime_{obj\_pred}+Runtime_{others\_real}
-\end{equation} 
-
-Based on these two equations, we can easily compute the performance improvement (denoted as $Perf_{improve}$) after fixing a specific false sharing, shown as EQ.(\ref{eq:improvement}). 
+{\bf The basic idea of prediction is to compute the performance improvement if the actual cycles of every memory access on a
+falsely-shared object are replaced by the average cycles of every memory access without false sharing}. Since fixing one false sharing may affect the latency on other memory addresses, \cheetah{} further assumes that the latency of other memory accesses are intact. \cheetah{} will compute the performance improvement based on EQ.(\ref{eq:improvement}), where runtime is denoted by $RT$. 
 \begin{equation}
 \label{eq:improvement}
-Perf_{improve}=(Runtime_{actual} - Runtime_{pred})/Runtime_{actual}
+Perf_{improve}=(RT_{actual} - RT_{predict})/RT_{actual}
 \end{equation} 
 
-According to EQ.(\ref{eq:improvement}), predicting performance improvement turns into the computation of $Runtime_{pred}$. $Runtime_{actual}$ can be easily computed through the sampling result if we have the latency information of every memory access and we are using the sampling result to represent the whole execution.  
 
-{\bf The basic idea of predicting the running time spending on a falsely-shared object is to replace the actual access latency of every memory access with the average access latency of an access without false sharing}. In actual fixes,   padding unnecessary words into structures or classes (as described in Section~\ref{sec:background}) can reduce the memory efficiency and may even degrade the performance of an application~\cite{qinzhao}. Thus, our prediction actually provides an upper bound of performance improvement that can be achieved by fixes. More implementation details about how to compute the $Runtime_{pred}$ and $Runtime_{actual}$ are further discussed in Section~\ref{sec:predictimprove}. We also evaluate the precision of our prediction in Section~\ref{sec:evalperfpred}.
+In reality, \Cheetah{} presents a upper bound on the performance improvement percentage, but not an absolute value of time saving. 
+%For example, padding unnecessary words into structures or classes (as described in Section~\ref{sec:background}) can reduce the memory efficiency and may even degrade the performance of an application~\cite{qinzhao}. 
+Detailed algorithms to compute $RT_{actual}$ and $RT_{predict}$ are detailed in Section~\ref{sec:predictimprove}. We also evaluate the precision of our prediction in Section~\ref{sec:evalperfpred}.
 
 

@@ -18,7 +18,7 @@
 \providecommand{\DIFdelendFL}{} %DIF PREAMBLE
 %DIF END PREAMBLE EXTENSION ADDED BY LATEXDIFF
 
-%\documentclass{sigplanconf}
+\documentclass[11pt]{sigplanconf}
 %\nocaptionrule
 
 % \documentclass[twocolumn,9pt]{article}
@@ -26,7 +26,7 @@
 
 % \documentclass{acm_proc_article-sp}
 
-\documentclass{sig-alternate}
+%\documentclass{sig-alternate}
 
 \date{} % \vspace*{-0.2in}}
 
@@ -90,6 +90,8 @@
 \newcommand{\munmap}{\cfunction{munmap}}
 \newcommand{\mprotect}{\cfunction{mprotect}}
 \newcommand{\mlock}{\cfunction{mlock}}
+\newcommand{\fixme}[1]{{\color{red}[\textsf{#1}]}}
+
 
 \hyphenation{app-li-ca-tion}
 \hyphenation{Die-Hard}
@@ -168,14 +170,14 @@
 
 \title{{\huge \bf \Cheetah{}}: Detecting False Sharing Efficiently and Effectively}
 
-\begin{comment}
+%\begin{comment}
 \authorinfo{Tongping~Liu \and Emery~D.~Berger}
 {School of Computer Science \\
 University of Massachusetts Amherst \\
 Amherst, MA 01003 \\
 {\{tonyliu,emery\}@cs.umass.edu}
 }
-\end{comment}
+%\end{comment}
 
 \maketitle
 
@@ -209,8 +211,11 @@ False Sharing, Detection Tools, Performance
 \input{overview}
 
 
-\section{Implementation of \Cheetah{}}
+\section{Detecting False Sharing}
 \input{implementation}
+
+\section{Predicting Performance Impact}
+\input{predict}
 
 %\section{\doubletake{} for Multithreading Programs}
 %\input{multithreading}

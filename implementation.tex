@@ -1,95 +1,49 @@
 \label{sec:implement}
-This section presents detailed implementation of \Cheetah{}. \Cheetah{} includes different components, which can be seen in Figure~\ref{fig:components}. 
+This section presents the detailed implementation of \Cheetah{}'s detection: it first describes how to sample memory accesses (in Section~\ref{sec:detect-trace}) and how to compute the number of cache invalidations based on the pattern of memory accesses (see Section~\ref{sec:compute}); then we describes how to report false sharing precisely and correctly (see Section~\ref{sec:report});
 
-\redmark{Should we add a figure about different components??}
+%\redmark{Should we add a figure about different components??}
 
-\subsection{Tracing Memory Accesses}
-
+\subsection{Sampling Memory Accesses}
+\label{sec:detect-trace}
 % How to trace the memory accesses?
 % What is the benefit of using performance counter, non-instrusive
 % What information that we can get about an memory access
 % How we will handle this information? We will pass it to cache invalidations module
 
-As described in Section~\ref{sec:perfcounter}, \Cheetah{} relies on hardware performance counters, such as AMD's IBS registers, to trace memory accesses. Hardware performance counters provide a non-intrusive and efficient approach to track memory accesses. \Cheetah{} is a user library that can be preloaded before the execution of an application. 
+As described in Section~\ref{sec:perfcounter}, \Cheetah{} relies on hardware performance counters, such as AMD's IBS registers, to sample memory accesses. Hardware performance counters provide a non-intrusive and efficient approach to track memory accesses. \Cheetah{} is a user library that can be preloaded before the execution of an application. 
 
-Before running an application, \Cheetah{}  registers a signal handler through \texttt{sigaction} so that this signal handler will be called after a specific amount of memory accesses. Inside the signal handler, \Cheetah{} can acquire different information about the current memory access, including the memory address, thread id, read or write operation, and access latency, which is going to be utilized to compute the number of cache invalidations, or predict potential false sharing, and predict performance improvement. 
+Before running an application, \Cheetah{}  registers a signal handler through \texttt{sigaction} so that this signal handler will be called after a specific amount of memory accesses, which is adjustable through macros. Inside the signal handler, \Cheetah{} can acquire detailed information on every sampled memory access, including memory address, thread id, read or write operation, and access latency, which will be fed into the computing module to compute the number of cache invalidations and the prediction module to predict performance impact. 
 
 
 \subsection{Computing Cache Invalidations}
 \label{sec:compute}
-% How to track cache invalidations?
-% What important improvement for performance?
-% 
-\Cheetah{} computes possible cache invalidations on each cache line based on the rule that is described in Section~\ref{sec:computeinvalidations}. \Cheetah{} maintains a two-entries-cache-history table for each cache line and checks the history table to decide whether an access leads to a cache invalidation. 
 
-We only care about cache lines that can potentially involve in false sharing, while most of them are not. We observe that only writes can possibly cause cache invalidations. Based on this observation, cache lines with a small number of writes are never be a target that can cause serious performance problem. For this reason, \Cheetah{} only tracks those cache lines when the number of writes on a cache line is larger than a pre-defined threshold, which we refer to as the {\it Tracking-Threshold}. Before this threshold is reached, \Cheetah{} only tracks the number of writes on a cache line while skipping tracking reads. This mechanism reduces performance and memory overhead at the same time.
+\Cheetah{} computes possible cache invalidations on each cache line based on the rule that is described in Section~\ref{sec:computeinvalidations}. \Cheetah{} maintains a two-entries-cache-history table for each cache line and checks against the history table to decide whether an access leads to a cache invalidation. In order to locate the cache history of each cache line, \Cheetah{} implements the shadow memory for all virtual addresses, which has been introduced before~\cite{qinzhao}. 
 
-In the implementation, \Cheetah{} maintains two arrays in shadow memory: {\it CacheWrites} tracks the number of memory writes on every cache line, and {\it CacheTracking} tracks detailed information for each cache line. To save memory, {\it CacheTracking} for a particular cache line is allocated dynamically once the number of writes on this cache line exceeds the {\it Tracking-Threshold}. The history table, number of cache invalidations on a cache line are actually included in {\it CacheTracking}. 
+Since \cheetah{} only cares about those cache lines that can potentially involve in false sharing. We observe that only those cache lines with a big number of writes can possibly cause a lot of cache invalidations. Based on this observation, cache lines with a small number of writes are never be a target that can cause serious performance problem. For this reason, \Cheetah{} only tracks those cache lines when the number of writes on a cache line is larger than a pre-defined threshold, which we refer to as the {\it Tracking-Threshold}. Before this threshold is reached, \Cheetah{} only tracks the number of writes on a cache line while skipping tracking reads. This mechanism reduces performance and memory overhead at the same time.
+
+In the implementation, \Cheetah{} maintains two arrays in the shadow memory: {\it CacheWrites} tracks the number of memory writes on every cache line, and {\it CacheTracking} tracks detailed information for each cache line. To save memory, {\it CacheTracking} for a particular cache line is allocated dynamically once the number of writes on this cache line exceeds the {\it Tracking-Threshold}. The history table, number of cache invalidations on a cache line, and detailed memory accesses are actually included in {\it CacheTracking}. These information are going to be checked in the reporting phase that is described in Section~\ref{sec:report}.
  
  \subsection{Reporting False Sharing}
 % How we will report false sharing precisely and correctly?
 % How we 
-\Cheetah{} aims to report false sharing correctly and precisely, same as previous work~\cite{sheriff, Predator}. 
+\label{sec:report}
 
-\paragraph{Correct Detection:} \Cheetah{} keeps track of word-based memory accesses on susceptible cache lines: how many reads or writes occurs by which thread on each word. When more than one thread access a word, \Cheetah{} marks this word to be shared. By identifying accesses on each word on a susceptible cache line, we can easily differentiate false sharing from true sharing sharing, as shown in Figure~\ref{fig:falsesharing}. Word-based information can help diagnose the specific condition of false sharing in a particular cache line, which benefits the process of manual fixes later.  
+\Cheetah{} aims to report false sharing correctly and precisely, same as existing work~\cite{sheriff, Predator}. 
+
+\paragraph{Correct Detection:} \Cheetah{} keeps track of word-based memory accesses on susceptible cache lines: how many reads or writes occurs by which thread on each word. When more than one thread access a word, \Cheetah{} marks this word to be shared. By identifying accesses on each word on a susceptible cache line, we can easily differentiate false sharing from true sharing sharing, as shown in Figure~\ref{fig:falsesharing}. Word-based information can also help diagnose more detailed  condition of false sharing in a particular cache line. Knowing this can help programmer to decide how to padding an existing data structure in order to avoid false sharing.  
 
 \paragraph{Precise Detection.} \Cheetah{} reports precise information for global variables and heap objects that are involved in false sharing. For global variables, \Cheetah{} reports names and addresses by searching through the ELF symbol table. For heap objects, \Cheetah{} reports the lines of code for allocating these objects.  
-Thus, \Cheetah{} intercepts all memory allocations and de-allocations and utilizes \texttt{backtrace()} to obtain the whole callsite stack.  \Cheetah{} uses its custom memory allocator that are built on Heap Layers~\cite{heaplayers}, which is good for implementing its shadow memory. But this implies that \Cheetah{} cannot cause false sharing that caused by the memory allocator itself, such as allocating objects for two threads in the same cache line. However, this is not a big problem as long as we can use an allocator like Hoard~\cite{Hoard}. 
+Thus, \Cheetah{} intercepts all memory allocations and de-allocations and utilizes \texttt{backtrace()} to obtain the whole callsite stack.  \Cheetah{} uses its custom memory allocator that are built on Heap Layers~\cite{heaplayers}, which is good for implementing its shadow memory. But this implies that \Cheetah{} can miss false sharings that caused by the memory allocator itself, such as allocating objects for two threads in the same cache line. However, this is not a big problem as long as we can use an modern allocator like Hoard~\cite{Hoard}. 
 
 %However, it is straightforward to solve such false sharing problems by using an allocator like Hoard that avoids this kind of false sharing.
 
 
-\subsection{Predicting False Sharing}
+%\subsection{Predicting False Sharing}
 % What is the basic idea to predict false sharing problem?
 % What is the difference with Predator{}?
 % For those predicted false sharing, we cannot predict performance improvement?
 
-\subsection{Predicting Performance Improvement after Fixes}
 
-\label{sec:predictimprove}
-
-Fixing false sharing problems can be non-trivial, even with precise information about a particular false sharing problem. Several problems may occur. 
-The first problem is that some false sharing problems can be insignificant. 
-For example, Sheriff reports few false sharing problems. But fixing them brings negligible performance benefit, such as word\_count or reverse\_index applications in Phoenix example. 
-
-The second problem is that fixing false sharing problem may even slow down the program because of that excessive memory consumption. For example, padding falsely-shared objects will introduce some . 
-
-What is the idea of predicting performance improvement after fixes?  
-
-We predict how much performance slowdown that can be caused . 
-
-\cheetah{} provides a upper bound on performance improvement after fixes. 
-
-It is note that sampling based approaches can actually 
-
-% How to avoid huge performance overhead? We introducing per-thread recording mechanism. 
-
-% How to actually predict the performance improvement? A thread may have the serial part and parallel part. We have to identify the serial part and parallel part. 
-
-% How to handle different CPUs? For example, we may start 16 threads on 8 CPUs. 
-
-% Can we get the resolute time on each phase? We are using this to calculate the performance improvement.  We also copy the whole memory accesses information out before transferring phases. 
-
-% What if only two threads only accesses a specific cache line and other threads didn't accesses that? We can actually check the word level's accesses to find out those number of threads that are accesses this tid. We could also verify whether those memory accesses are on the critical path or not. 
-
-% We should use actual tid instead of thread index to identify threads. 
-
-% We should remove the write-invoked tracking since we have to check the number of accesses. Thus, we actually don't care those ones that are happened in the serial phase. Because we won't actual change its performance initially. 
-
-
-
-% The total number of memory accesses on an addresses
-
-% The total latency of accessing an address
-
-% The total number of memory accesses for each thread. 
-
-% The total latency of all memory accesses for each thread  
-
-% All memory accesses of each thread
-
-% All memory accesses in total = Sum of (memory accesses of each thread)
-
-% Total latency of all memory accesses for each thread. 
 
  
