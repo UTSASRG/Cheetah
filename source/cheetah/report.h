@@ -212,8 +212,20 @@ public:
       memset(winfo, 0, sizeof(struct wordinfo) * words);
     }
 
+
     return winfo;
   }
+
+	inline void printWordsIndex(struct wordinfo * winfo, int words, int line) {
+		int count = 0;
+
+		while(count < words) {
+			fprintf(stderr, "at line %d: word %d with index %d\n", line, count, winfo->tindex);
+			winfo++;
+			count++;
+		}
+	
+	}
 
   //inline bool getCacheInvalidations(unsigned long * cacheWrites, int lines, ObjectInfo * object) {
   inline bool getCacheInvalidations(unsigned long cacheindex, int lines, ObjectInfo * object) {
@@ -236,11 +248,11 @@ public:
 //     fprintf(stderr, "getCacheInvalidations firstOffset %lx lastOffset %lx lines %d\n", firstOffset, lastOffset, lines);
     // Traverse all related cache lines.
     for(unsigned long i = cacheindex; i < (cacheindex+lines); i++) {
-      unsigned long index;
+      unsigned long windex;
       unsigned long words;
 
       if(lines == 1) {
-        index = firstOffset/xdefines::WORD_SIZE;
+        windex = firstOffset/xdefines::WORD_SIZE;
         // Justify the last offset, it should not be 0 since it can point to last bytes of a cache line. 
         if(lastOffset == 0) {
           lastOffset = CACHE_LINE_SIZE;
@@ -249,15 +261,15 @@ public:
       }
       else {
         if(i == cacheindex) {
-          index = firstOffset/xdefines::WORD_SIZE;
+          windex = firstOffset/xdefines::WORD_SIZE;
           words = (CACHE_LINE_SIZE-firstOffset)/xdefines::WORD_SIZE; 
         }
         else if(i == cacheindex + lines - 1) {
-          index = 0;
+          windex = 0;
           words = lastOffset/xdefines::WORD_SIZE;
         }
         else {
-          index = 0;
+          windex = 0;
           words = CACHE_LINE_SIZE/xdefines::WORD_SIZE;
         }
       }
@@ -281,7 +293,10 @@ public:
           winfo = allocWordinfo(object->words);
         }
 
-        memcpy(&winfo[windex], track->getWordinfoAddr(index), words * sizeof(struct wordinfo));
+        memcpy(&winfo[windex], track->getWordinfoAddr(windex), words * sizeof(struct wordinfo));
+
+				//fprintf(stderr, "after copy,windex %d winfo->tindex is %d howmanywords %ld at %p\n", windex, winfo->tindex, object->words, track->getWordinfoAddr(windex));
+				//printWordsIndex(winfo, words, __LINE__);
 
         object->totalWrites += track->getWrites();
         if(track->getInvalidations() > 0) { 
@@ -299,6 +314,8 @@ public:
     if(winfo) {
       object->winfo = (void *)winfo;
     }
+	
+//		fprintf(stderr, "LINE:%d, winfo->tindex is %d\n", __LINE__, winfo->tindex);
  
 		// Get the threads related information.
 		unsigned long checkedWords = 0;
@@ -309,28 +326,31 @@ public:
 		object->totalThreadsCycles = 0;
 		object->totalThreads = 0;
 		object->longestThreadRuntime = 0;
+//		fprintf(stderr, "LINE:%d, winfo->tindex is %d\n", __LINE__, winfo->tindex);
 		
 		while(winfo) {
-			pid_t tid = winfo->tid;
+			int tindex = winfo->tindex;
+			int unitwords = winfo->unitsize/xdefines::WORD_SIZE;
 			bool inside = false;
-			
+
 			// Check whether this tid is recorded or not.
 			for(int i = 0; i < object->totalThreads; i++) {
-				if(tid == object->threads[i]->tid) {
+				if(tindex == object->threads[i]->index) {
 					inside = true;
 					break;
 				}
 			} 
 
-			if(inside == false && (tid != cachetrack::WORD_THREAD_SHARED)) {
+			if(inside == false && (tindex != cachetrack::WORD_THREAD_SHARED)) {
 				// Finding thread_t of this thread. 
-				thread_t * thisThread = xthread::getInstance().getThreadInfoByTid(tid);
+				//fprintf(stderr, "tindex %d. shared %d\n", tindex, cachetrack::WORD_THREAD_SHARED);
+				thread_t * thisThread = xthread::getInstance().getThreadInfoByIndex(tindex);
 
 				if(thisThread != NULL) {
+
 					// If this thread is not inside, record this threads.
 					object->threads[object->totalThreads] = thisThread;
 		
-//					fprintf(stderr, "tid is %d\n", tid);	
 					object->totalThreadsAccesses += thisThread->accesses;
 					object->totalThreadsCycles += thisThread->latency;
 				
@@ -343,15 +363,13 @@ public:
 			}
 
 			// We will check next word
-			checkedWords++;
+			checkedWords+=unitwords;
 
 			if(checkedWords == object->words && object->totalThreads > 0) {
 				// Now we have traversed all words.
 				thread_t * initialThread = xthread::getInstance().getThreadInfoByIndex(0);
 
-				unsigned long cyclesWithoutFS = 0;
- 				if (initialThread->accesses != 0)
-					cyclesWithoutFS = (initialThread->latency * 100)/initialThread->accesses;
+				unsigned long cyclesWithoutFS = (initialThread->latency * 100)/initialThread->accesses;
 				
 				// Now we can compute the performance improvement.
 				object->predictThreadsCycles = object->totalThreadsCycles - object->totalFSCycles + ((object->totalFSAccesses * cyclesWithoutFS)/100);
@@ -418,7 +436,7 @@ public:
 			}
 			
 			// Check next word
-			winfo++;
+			winfo+=unitwords;
 		}	
 
     return hasFS; 
@@ -577,8 +595,8 @@ public:
 
 		// We should check the latency of an object
     fprintf(stderr, "filename %s\n", _curFilename);
-    fprintf(stderr, "FALSE SHARING: start %p end %p (with size %lx). Accesses %lx invalidations %lx writes %lx total latency %lx.\n", object->start, object->stop, object->unitlength, object->totalFSAccesses, object->invalidations, object->totalWrites, object->totalFSCycles);
-    fprintf(stderr, "Latency information: totalThreads %ld totalThreadsAccesses %lx totalThreadsCycles %lx longestRuntime %ld thread reduce rate %f total improvement rate %f\n\n", object->totalThreads, object->totalThreadsAccesses, object->totalThreadsCycles, object->longestThreadRuntime, object->threadReduceRate, object->predictImprovement);
+    fprintf(stderr, "FALSE SHARING: start %p end %p (with size %lx). Accesses %lx invalidations %lx writes %lx total latency on this object was %ld cycles.\n", object->start, object->stop, object->unitlength, object->totalFSAccesses, object->invalidations, object->totalWrites, object->totalFSCycles);
+    fprintf(stderr, "Latency information: totalThreads %ld totalThreadsAccesses %lx totalThreadsCycles %ld longestRuntime %ld threadReduceRate %f totalPossibleImprovementRate %f\n\n", object->totalThreads, object->totalThreadsAccesses, object->totalThreadsCycles, object->longestThreadRuntime, object->threadReduceRate, object->predictImprovement);
     if(object->isHeapObject) { 
     fprintf(stderr, "It is a HEAP OBJECT with callsite stack:\n");
       for(int i = 0; i < CALL_SITE_DEPTH; i++) {
