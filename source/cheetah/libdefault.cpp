@@ -25,8 +25,8 @@ extern "C" {
   xmemory  & _memory = xmemory::getInstance();
 
   // FIXME: this is the function exposed to the hardware performance counter.
-  void handleAccess(pid_t tid, unsigned long addr, size_t size, bool isWrite, unsigned long  latency) {
-    xmemory::getInstance().handleAccess(tid, addr, size, isWrite, latency);
+  void handleAccess(int tindex, unsigned long addr, size_t size, bool isWrite, unsigned long  latency) {
+    xmemory::getInstance().handleAccess(tindex, addr, size, isWrite, latency);
   }
   
   void initializer (void) {
