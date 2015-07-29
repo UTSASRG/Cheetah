@@ -127,6 +127,10 @@ public:
     return &_threads[index];
   }
 
+	unsigned long getMaxThreadIndex(void) {
+		return _threadIndex;
+  }
+	
 	// Updating the end index in every allocThreadIndex
 	// There is no need to hold the lock since only the main thread can call allocThreadIndex
 	void updateThreadLevelInfo(int threadindex) {

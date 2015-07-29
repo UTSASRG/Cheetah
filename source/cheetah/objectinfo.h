@@ -23,8 +23,8 @@ public:
 	// Find information of involving threads.
 	thread_t * threads[xdefines::MAX_ALIVE_THREADS];
 	unsigned long totalThreads;
-	unsigned long totalThreadsAccesses;
-	unsigned long totalThreadsCycles;
+	unsigned long totalThreadsAccesses; // the number of accesses of related threads
+	unsigned long totalThreadsCycles; // all cycles of related threads
 	unsigned long longestThreadRuntime;
 	unsigned long predictThreadsCycles;
 	double threadReduceRate;

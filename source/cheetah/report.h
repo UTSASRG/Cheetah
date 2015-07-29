@@ -227,108 +227,77 @@ public:
 	
 	}
 
-  //inline bool getCacheInvalidations(unsigned long * cacheWrites, int lines, ObjectInfo * object) {
-  inline bool getCacheInvalidations(unsigned long cacheindex, int lines, ObjectInfo * object) {
+  inline bool getCacheInvalidations(unsigned long firstLine, int lines, ObjectInfo * object) {
     bool hasFS = false;
-    unsigned long firstOffset = getCachelineOffset((unsigned long)object->start);
-    unsigned long lastOffset = getCachelineOffset((unsigned long)object->stop);
     cachetrack * track = NULL;
-    struct wordinfo * winfo = NULL;
+    struct wordinfo * winfo = object->winfo;
     int windex = 0;
 		unsigned long latency = 0;
+		unsigned long lastLine = firstLine + lines - 1;
   
-    object->winfo = NULL;
     object->invalidations = 0;
     object->totalWrites = 0;
     object->totalFSAccesses = 0;
     object->totalFSCycles = 0;
 
-    assert(firstOffset < CACHE_LINE_SIZE);
-
-//     fprintf(stderr, "getCacheInvalidations firstOffset %lx lastOffset %lx lines %d\n", firstOffset, lastOffset, lines);
-    // Traverse all related cache lines.
-    for(unsigned long i = cacheindex; i < (cacheindex+lines); i++) {
-      unsigned long windex;
+    // Traverse all related cache lines. We will try to get how many words in this object.
+    for(unsigned long i = firstLine; i <= lastLine; i++) {
+      unsigned long index;
       unsigned long words;
+    	unsigned long firstOffset = 0; 
+    	unsigned long lastOffset = CACHE_LINE_SIZE;
 
-      if(lines == 1) {
-        windex = firstOffset/xdefines::WORD_SIZE;
-        // Justify the last offset, it should not be 0 since it can point to last bytes of a cache line. 
-        if(lastOffset == 0) {
-          lastOffset = CACHE_LINE_SIZE;
-        }
-        words = (lastOffset - firstOffset)/xdefines::WORD_SIZE;
-      }
-      else {
-        if(i == cacheindex) {
-          windex = firstOffset/xdefines::WORD_SIZE;
-          words = (CACHE_LINE_SIZE-firstOffset)/xdefines::WORD_SIZE; 
-        }
-        else if(i == cacheindex + lines - 1) {
-          windex = 0;
-          words = lastOffset/xdefines::WORD_SIZE;
-        }
-        else {
-          windex = 0;
-          words = CACHE_LINE_SIZE/xdefines::WORD_SIZE;
-        }
-      }
+			// Find out first offset and last offset in the current cache line.
+			if(i == firstLine) {
+				// If it is the first line, we will start from the start address of this object.
+				firstOffset = getCachelineOffset((unsigned long)object->start);
+			}
+			if(i == lastLine) {
+				// If it is the last line, we will stop at the last address of this object. 
+				lastOffset = getCachelineOffset((unsigned long)object->stop);
+			}
+			index = firstOffset/xdefines::WORD_SIZE;          
+			words = (lastOffset - firstOffset)/xdefines::WORD_SIZE;
       
-      // We only have false sharing when the cache status is larger than predefined threshold
-     //fprintf(stderr, "cache %d: cacheWrites is %ld  at %p\n", i, _cacheWrites[i], &_cacheWrites[i]);
+      // Check a cache line when the number of writes is larger than the predefined threshold
       if(_cacheWrites[i] >= xdefines::THRESHOLD_TRACK_DETAILS) {
+				// Get the detailed information on this cache line.
         track = (cachetrack *)_cacheTrackings[i];
 
         if(track == NULL) {
           continue;
         }
 
-				// Detailed report, maybe we should close it in the future.
+				// Reporting the word-based details on this line. 
         if(track->getInvalidations() > 0) {
-          //fprintf(stderr, "cache %ld: cacheWrites is %ld invalidations %lx at %p\n", i, _cacheWrites[i], track->getInvalidations(), track);
           track->reportFalseSharing();
         }
         
-        if(winfo == NULL) {
-          winfo = allocWordinfo(object->words);
-        }
-
-        memcpy(&winfo[windex], track->getWordinfoAddr(windex), words * sizeof(struct wordinfo));
-
-				//fprintf(stderr, "after copy,windex %d winfo->tindex is %d howmanywords %ld at %p\n", windex, winfo->tindex, object->words, track->getWordinfoAddr(windex));
-				//printWordsIndex(winfo, words, __LINE__);
+				// Copy the word-based details 
+        memcpy(&winfo[windex], track->getWordinfoAddr(index), words * sizeof(struct wordinfo));
 
         object->totalWrites += track->getWrites();
-        if(track->getInvalidations() > 0) { 
-          object->invalidations += track->getInvalidations();
-        }
+        object->invalidations += track->getInvalidations();
 
 				object->totalFSCycles += track->getLatency();
         object->totalFSAccesses += track->getAccesses();
       }
    
-      
+     	// Update the global windex after this cache line
       windex += words;
     }
  
-    if(winfo) {
-      object->winfo = (void *)winfo;
-    }
-	
-//		fprintf(stderr, "LINE:%d, winfo->tindex is %d\n", __LINE__, winfo->tindex);
  
-		// Get the threads related information.
-		unsigned long checkedWords = 0;
-
-		// Cleaning up this threads.
-		memset(&object->threads, 0, xdefines::MAX_ALIVE_THREADS * sizeof(pid_t));
+		// Now get threads related information about this object.
+		int maxThreadIndex = xthread::getInstance().getMaxThreadIndex();
+		memset(&object->threads, 0, maxThreadIndex * sizeof(pid_t));
 		object->totalThreadsAccesses = 0;
 		object->totalThreadsCycles = 0;
 		object->totalThreads = 0;
 		object->longestThreadRuntime = 0;
-//		fprintf(stderr, "LINE:%d, winfo->tindex is %d\n", __LINE__, winfo->tindex);
 		
-		while(winfo) {
+		// We will check every word of this object.	
+		while(winfo < (winfo+ object->words)) {
 			int tindex = winfo->tindex;
 			int unitwords = winfo->unitsize/xdefines::WORD_SIZE;
 			bool inside = false;
@@ -341,13 +310,12 @@ public:
 				}
 			} 
 
+			// If this thread index is not recorded, add it and update the total information.
 			if(inside == false && (tindex != cachetrack::WORD_THREAD_SHARED)) {
 				// Finding thread_t of this thread. 
-				//fprintf(stderr, "tindex %d. shared %d\n", tindex, cachetrack::WORD_THREAD_SHARED);
 				thread_t * thisThread = xthread::getInstance().getThreadInfoByIndex(tindex);
 
 				if(thisThread != NULL) {
-
 					// If this thread is not inside, record this threads.
 					object->threads[object->totalThreads] = thisThread;
 		
@@ -362,17 +330,19 @@ public:
 				}	
 			}
 
-			// We will check next word
-			checkedWords+=unitwords;
+			// Check next word
+			winfo+=unitwords;
+		}	
 
-			if(checkedWords == object->words && object->totalThreads > 0) {
+		// After the checking, we will try to compute the total information for a falsely-shared object.
+		// We currently don't care those truely-sharing objects.			
+		if(object->totalThreads > 0) {
 				// Now we have traversed all words.
 				thread_t * initialThread = xthread::getInstance().getThreadInfoByIndex(0);
 
-				//FIXME: what if initialThread is 0????
- 				unsigned long cyclesWithoutFS;
-				if(initialThread->accesses != 0) 
-				 	cyclesWithoutFS = (initialThread->latency * 100)/initialThread->accesses;
+				assert(initialThread->accesses != 0);
+ 
+ 				unsigned long cyclesWithoutFS  = (initialThread->latency * 100)/initialThread->accesses;
 				
 				// Now we can compute the performance improvement.
 				object->predictThreadsCycles = object->totalThreadsCycles - object->totalFSCycles + ((object->totalFSAccesses * cyclesWithoutFS)/100);
@@ -435,12 +405,7 @@ public:
 				object->predictImprovement = ((double)realTotalRuntime - (double)predictTotalRuntime)/(double)realTotalRuntime; 
 				fprintf(stderr, "real totalRuntime %ld predicted TotalRuntime %ld\n", realTotalRuntime, predictTotalRuntime);	
 		//		fprintf(stderr, "initialthread cycles %ld predictCycles %ld actualcycles %ld threadImprove %f predicting improvement %f\n", cyclesWithoutFS, object->predictThreadsCycles, object->totalThreadsCycles, threadImprove, object->predictImprovement); 	
-				break;
 			}
-			
-			// Check next word
-			winfo+=unitwords;
-		}	
 
     return hasFS; 
   }
@@ -506,11 +471,11 @@ public:
 			// Check whether there are some invalidations on this object.
       ObjectInfo objectinfo;
       objectinfo.isHeapObject = isHeap;
-			objectinfo.winfo = NULL;
       objectinfo.unitlength = objectSize;
       objectinfo.words = objectSize/xdefines::WORD_SIZE;
       objectinfo.start = (unsigned long *)objectStart;
       objectinfo.stop = (unsigned long *)objectEnd;
+			objectinfo.winfo = allocWordinfo(object->words);
          
       getCacheInvalidations(cachelineIndex, lines, &objectinfo);
 
