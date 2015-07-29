@@ -315,13 +315,16 @@ public:
 
 		// We will check every word of this object.	
 		while(winfo < winfoend) {
-			if(winfo->unitsize < xdefines::WORD_SIZE || winfo->tindex > xdefines::MAX_THREADS) {
+			if(winfo->unitsize == 0 || winfo->tindex > xdefines::MAX_THREADS) {
 				winfo++;
 				continue;
 			}
 
 			tindex = winfo->tindex;
 			unitwords = winfo->unitsize/xdefines::WORD_SIZE;
+			if(winfo->unitsize < xdefines::WORD_SIZE) {
+				unitwords = 1;
+			}
 			inside = false;
 
 			// Check whether this tid is recorded or not.
