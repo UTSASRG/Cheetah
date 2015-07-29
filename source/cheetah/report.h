@@ -315,7 +315,7 @@ public:
 
 		// We will check every word of this object.	
 		while(winfo < winfoend) {
-			if(winfo->unitsize == 0 || winfo->tindex > xdefines::MAX_THREADS) {
+			if(winfo->unitsize < xdefines::WORD_SIZE || winfo->tindex > xdefines::MAX_THREADS) {
 				winfo++;
 				continue;
 			}
