@@ -29,6 +29,8 @@ public:
 	unsigned long predictThreadsCycles;
 	double threadReduceRate;
 	double predictImprovement; //Final improvement 
+	unsigned long realTotalRuntime;
+	unsigned long predictTotalRuntime;
 
   unsigned long * start;
   unsigned long * stop;

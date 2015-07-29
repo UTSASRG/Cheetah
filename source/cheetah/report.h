@@ -315,16 +315,16 @@ public:
 
 		// We will check every word of this object.	
 		while(winfo < winfoend) {
-			tindex = winfo->tindex;
-			unitwords = winfo->unitsize/xdefines::WORD_SIZE;
-			inside = false;
-
-			//fprintf(stderr, "line %d: check THREADindex %d winfo->unitsize %d\n", __LINE__, tindex, winfo->unitsize);
 			if(winfo->unitsize == 0 || winfo->tindex > xdefines::MAX_THREADS) {
 				winfo++;
 				continue;
 			}
 
+			tindex = winfo->tindex;
+			unitwords = winfo->unitsize/xdefines::WORD_SIZE;
+			inside = false;
+
+			//fprintf(stderr, "line %d: check THREADindex %d winfo->unitsize %d\n", __LINE__, tindex, winfo->unitsize);
 			//fprintf(stderr, "line %d: check index %d\n", __LINE__, tindex);
 
 			// Check whether this tid is recorded or not.
@@ -439,10 +439,12 @@ public:
 						} 	
 					}	
 				}
-				
+				object->realTotalRuntime = realTotalRuntime;
+				object->predictTotalRuntime = predictTotalRuntime;
+	
 				object->predictImprovement = ((double)realTotalRuntime - (double)predictTotalRuntime)/(double)realTotalRuntime; 
 	//			fprintf(stderr, "real totalRuntime %ld predicted TotalRuntime %ld\n", realTotalRuntime, predictTotalRuntime);
-				fprintf(stderr, "initialthread cycles %ld predictCycles %ld actualcycles %ld threadImprove %f predicting improvement %f\n", cyclesWithoutFS, object->predictThreadsCycles, object->totalThreadsCycles, threadImprove, object->predictImprovement); 	
+			//	fprintf(stderr, "initialthread cycles %ld predictCycles %ld actualcycles %ld threadImprove %f predicting improvement %f\n", cyclesWithoutFS, object->predictThreadsCycles, object->totalThreadsCycles, threadImprove, object->predictImprovement); 	
 			}
 
     return hasFS; 
@@ -587,7 +589,7 @@ public:
 
 		// We should check the latency of an object
     fprintf(stderr, "FALSE SHARING: start %p end %p (with size %lx). Accesses %lx invalidations %lx writes %lx total latency on this object was %ld cycles.\n", object->start, object->stop, object->unitlength, object->totalFSAccesses, object->invalidations, object->totalWrites, object->totalFSCycles);
-    fprintf(stderr, "Latency information: totalThreads %ld totalThreadsAccesses %lx totalThreadsCycles %ld longestRuntime %ld threadReduceRate %f totalPossibleImprovementRate %f\n\n", object->totalThreads, object->totalThreadsAccesses, object->totalThreadsCycles, object->longestThreadRuntime, object->threadReduceRate, object->predictImprovement);
+    fprintf(stderr, "Latency information: totalThreads %ld totalThreadsAccesses %lx totalThreadsCycles %ld longestRuntime %ld threadReduceRate %f totalPossibleImprovementRate %f (realRuntime %ld predictedRuntime %ld)\n\n", object->totalThreads, object->totalThreadsAccesses, object->totalThreadsCycles, object->longestThreadRuntime, object->threadReduceRate, object->predictImprovement, object->realTotalRuntime, object->predictTotalRuntime);
     if(object->isHeapObject) { 
     fprintf(stderr, "It is a HEAP OBJECT with callsite stack:\n");
       for(int i = 0; i < CALL_SITE_DEPTH; i++) {

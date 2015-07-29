@@ -47,16 +47,14 @@ double __count_elapse(struct timeinfo * start, struct timeinfo * stop)
 	double elapsed = 0.0;
 
 	elapsed = (double)(stop->low) + (double)(UINT_MAX)*(double)(stop->high - start->high) - (double)start->low;
-	//if (stop->low < start->low)
-	//	elapsed -= (double)UINT_MAX;
 
-	printf("STOP: low %ld hight %ld START: low %ld high %ld\n", stop->low, stop->high, start->low, start->high);
+//	printf("STOP: low %ld hight %ld START: low %ld high %ld\n", stop->low, stop->high, start->low, start->high);
 	
-	printf("elapsed %f\n", elapsed);
+//	printf("elapsed %f\n", elapsed);
  
-	if(elapsed > 5000.0) {
+//	if(elapsed > 5000.0) {
 		//while(1);
-	}
+//	}
 	return elapsed;
 }
 

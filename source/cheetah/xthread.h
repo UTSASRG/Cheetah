@@ -338,7 +338,7 @@ public:
 
 		// Get the stop time.
 		current->actualRuntime = elapsed2ms(stop(&current->startTime, NULL));
-		fprintf(stderr, "tid %d index %d latency %lx\n", current->tid, current->index, current->latency);
+		fprintf(stderr, "tid %d index %d latency %lx actualRuntime %ld\n", current->tid, current->index, current->latency, current->actualRuntime);
 
     return result;
   }
