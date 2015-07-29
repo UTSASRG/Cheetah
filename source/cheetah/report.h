@@ -322,9 +322,6 @@ public:
 
 			tindex = winfo->tindex;
 			unitwords = winfo->unitsize/xdefines::WORD_SIZE;
-			if(winfo->unitsize < xdefines::WORD_SIZE) {
-				unitwords = 1;
-			}
 			inside = false;
 
 			// Check whether this tid is recorded or not.

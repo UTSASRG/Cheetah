@@ -179,6 +179,8 @@ public:
     int wordindex = getCacheOffset((size_t)addr);
   
     // Record the detailed information of this accesses.
+		bytes = (bytes < xdefines::WORD_SIZE) ? xdefines::WORD_SIZE : bytes;
+
     recordWordAccess(tindex, addr, bytes, type);
 
     // Update the writes information 
