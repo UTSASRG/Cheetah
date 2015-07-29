@@ -208,13 +208,13 @@ sigio_handler(int sig, siginfo_t* siginfo, void* context)
 	    // exclude kernel addresses
    	    if (!((linear_addr >> 63) & 0x1)) {
               if (opdata3->reg.ibsstop) {
-//	        handleAccess(threadid, (unsigned long)linear_addr, 1, true, 0);
-	        handleAccess(gettid(), (unsigned long)linear_addr, 1, true, 0);
+	        handleAccess(threadid, (unsigned long)linear_addr, 1, true, 0);
+//	        handleAccess(gettid(), (unsigned long)linear_addr, 1, true, 0);
 //	        printf("store: addr is %x, thread id is %d\n", linear_addr, threadid);
               }
               else {
-//	        handleAccess(threadid, (unsigned long)linear_addr, 1, false, lat);
-	        handleAccess(gettid(), (unsigned long)linear_addr, 1, false, lat);
+	        handleAccess(threadid, (unsigned long)linear_addr, 1, false, lat);
+//	        handleAccess(gettid(), (unsigned long)linear_addr, 1, false, lat);
 //	        printf("load: addr is %x, thread id is %d\n", linear_addr, threadid);
 	      }
             }
