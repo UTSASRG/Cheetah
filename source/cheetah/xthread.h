@@ -332,13 +332,13 @@ public:
     current->self = pthread_self();
 		current->tid = gettid();
 
-		fprintf(stderr, "CHILD:tid %d index %d\n", current->tid, current->index);
+//		fprintf(stderr, "CHILD:tid %d index %d\n", current->tid, current->index);
     // from the TLS storage.
     result = current->startRoutine(current->startArg);
 
 		// Get the stop time.
 		current->actualRuntime = elapsed2ms(stop(&current->startTime, NULL));
-		fprintf(stderr, "tid %d index %d latency %lx actualRuntime %ld\n", current->tid, current->index, current->latency, current->actualRuntime);
+//		fprintf(stderr, "tid %d index %d latency %lx actualRuntime %ld\n", current->tid, current->index, current->latency, current->actualRuntime);
 
     return result;
   }

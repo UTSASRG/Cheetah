@@ -324,9 +324,6 @@ public:
 			unitwords = winfo->unitsize/xdefines::WORD_SIZE;
 			inside = false;
 
-			//fprintf(stderr, "line %d: check THREADindex %d winfo->unitsize %d\n", __LINE__, tindex, winfo->unitsize);
-			//fprintf(stderr, "line %d: check index %d\n", __LINE__, tindex);
-
 			// Check whether this tid is recorded or not.
 			for(int i = 0; i < object->totalThreads; i++) {
 				if(tindex == object->threads[i]->index) {
@@ -337,8 +334,6 @@ public:
 
 			// If this thread index is not recorded, add it and update the total information.
 			if(inside == false && (tindex != cachetrack::WORD_THREAD_SHARED)) {
-
-			  //fprintf(stderr, "inside is false\n");
 				// Finding thread_t of this thread. 
 				thread_t * thisThread = xthread::getInstance().getThreadInfoByIndex(tindex);
 
@@ -349,7 +344,6 @@ public:
 					object->totalThreadsAccesses += thisThread->accesses;
 					object->totalThreadsCycles += thisThread->latency;
 			
-		//			fprintf(stderr, "THREADS %d: latency %lx\n", tindex, thisThread->latency);
 					if(object->longestThreadRuntime < thisThread->actualRuntime) {
 						object->longestThreadRuntime = thisThread->actualRuntime;
 					} 
@@ -362,7 +356,6 @@ public:
 			winfo+=unitwords;
 		}	
 
-		//fprintf(stderr, "line %d: object->totalThreads %ld\n", __LINE__, object->totalThreads);
 		// After the checking, we will try to compute the total information for a falsely-shared object.
 		// We currently don't care those truely-sharing objects.			
 		if(object->totalThreads > 0) {
@@ -376,7 +369,6 @@ public:
 				if(initialThread->accesses != 0) {
 				 	cyclesWithoutFS = (initialThread->latency * 100)/initialThread->accesses;
 				}
-
 
 				assert(object->totalThreadsCycles >= object->totalFSCycles);
 				assert(object->totalFSAccesses > 0);
