@@ -140,7 +140,7 @@ extern "C"
 	inline void updateThreadLatency(unsigned long latency) {
 		current->latency += latency;
 		current->accesses += 1;
-//		fprintf(stderr, "Updating THREAD%d: latency %lx now %lx\n", current->tid, latency, current->latency);
+//		fprintf(stderr, "Updating THREAD%d: latency %lx now %lx\n", current->index, latency, current->latency);
 	}
 
   enum { USER_HEAP_BASE     = 0x40000000 }; // 1G
@@ -214,6 +214,9 @@ public:
 
   enum { ADDRESS_ALIGNMENT = sizeof(void *) };
 
+	// FIXME: should be adjusted according to real situation.
+	enum { CYCLES_PER_NONFS_ACCESS = 3 }; 
+
   // sizeof(unsigned long) = 8;
   enum { ADDRESS_ALIGNED_BITS = 0xFFFFFFFFFFFFFFF8 };
 
@@ -233,7 +236,7 @@ public:
 
   // We only care about those words whose access is larger than the average number under 
   // the tracking period 
-  enum { THRESHOLD_AVERAGE_ACCESSES = THRESHOLD_TRACK_DETAILS >> 3 };
+  enum { THRESHOLD_AVERAGE_ACCESSES = THRESHOLD_TRACK_DETAILS >> 1 };
   
 
   enum { THRESHOLD_REPORT_INVALIDATIONS = 1 };

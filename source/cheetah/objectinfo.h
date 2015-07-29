@@ -17,15 +17,15 @@ public:
   unsigned long totalWrites;
   unsigned long unitlength;
   unsigned long totallength;
-  unsigned long totalFSAccesses;
-	unsigned long totalFSCycles;
+  unsigned long totalFSAccesses; // the number of accesses on this object
+	unsigned long totalFSCycles; // all cycles in this falsely-shared object.
 
 	// Find information of involving threads.
 	thread_t * threads[xdefines::MAX_ALIVE_THREADS];
 	unsigned long totalThreads;
 	unsigned long totalThreadsAccesses; // the number of accesses of related threads
-	unsigned long totalThreadsCycles; // all cycles of related threads
-	unsigned long longestThreadRuntime;
+	unsigned long totalThreadsCycles; // all cycles of related threads.
+	unsigned long longestThreadRuntime; // the longest runtime of related threads, got by using rtdsc.
 	unsigned long predictThreadsCycles;
 	double threadReduceRate;
 	double predictImprovement; //Final improvement 

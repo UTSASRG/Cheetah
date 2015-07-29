@@ -75,10 +75,11 @@ public:
     _thisCache.initialize((void *)_cacheStart, CACHE_LINE_SIZE);
     _writes = writes; 
     _accesses = _writes;
+		_latency = 0;
 
     // Set the words information.
     memset(&_words[0], 0, sizeof(struct wordinfo) * xdefines::WORDS_PER_CACHE_LINE); 
-		fprintf(stderr, "_words information at %p\n", &_words[0]); 
+		//fprintf(stderr, "_words information at %p\n", &_words[0]); 
     for(int i = 0; i < xdefines::WORDS_PER_CACHE_LINE; i++) {
       _words[i].tindex = WORD_THREAD_INIT;
     }
@@ -172,7 +173,7 @@ public:
 		atomic_add(1, (volatile unsigned long *)&_accesses);
 		atomic_add(latency, (volatile unsigned long *)&_latency);
 
-//		fprintf(stderr, "%p (Thread%d): access %lx latency %lx current latency %lx\n", addr, getThreadIndex(), _accesses, _latency, latency);
+		//fprintf(stderr, "%p (Thread%d): access %ld track latency %ld current latency %ld\n", addr, getThreadIndex(), _accesses, _latency, latency);
  
     // Check whether we need to sample this lines accesses now.
     int wordindex = getCacheOffset((size_t)addr);

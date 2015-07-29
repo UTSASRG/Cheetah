@@ -416,9 +416,6 @@ public:
 			return;
 		}
 
-		if(tindex > 16) 
-		fprintf(stderr, "handleAccess at line %d tid %d\n", __LINE__, tindex);
-
     // We only care those acesses of global and heap.
     unsigned long index = getCachelineIndex(addr);
     cachetrack * track = NULL;

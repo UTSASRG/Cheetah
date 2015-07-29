@@ -230,7 +230,7 @@ public:
   inline bool getCacheInvalidations(unsigned long firstLine, int lines, ObjectInfo * object) {
     bool hasFS = false;
     cachetrack * track = NULL;
-    struct wordinfo * winfo = object->winfo;
+    struct wordinfo * winfo = (struct wordinfo *)object->winfo;
     int windex = 0;
 		unsigned long latency = 0;
 		unsigned long lastLine = firstLine + lines - 1;
@@ -255,9 +255,13 @@ public:
 			if(i == lastLine) {
 				// If it is the last line, we will stop at the last address of this object. 
 				lastOffset = getCachelineOffset((unsigned long)object->stop);
+				if(lastOffset == 0) {
+					lastOffset = CACHE_LINE_SIZE;
+				}
 			}
 			index = firstOffset/xdefines::WORD_SIZE;          
 			words = (lastOffset - firstOffset)/xdefines::WORD_SIZE;
+		//fprintf(stderr, "firstLine %ld lastLine %ld. firstOffset %ld lastOffset %ld\n", firstLine, lastLine, firstOffset, lastOffset);
       
       // Check a cache line when the number of writes is larger than the predefined threshold
       if(_cacheWrites[i] >= xdefines::THRESHOLD_TRACK_DETAILS) {
@@ -273,7 +277,8 @@ public:
           track->reportFalseSharing();
         }
         
-				// Copy the word-based details 
+				// Copy the word-based details
+		//		fprintf(stderr, "copy words information %ld\n", words); 
         memcpy(&winfo[windex], track->getWordinfoAddr(index), words * sizeof(struct wordinfo));
 
         object->totalWrites += track->getWrites();
@@ -281,12 +286,18 @@ public:
 
 				object->totalFSCycles += track->getLatency();
         object->totalFSAccesses += track->getAccesses();
+
+				fprintf(stderr, "object->totalFSAccesses %ld cycles %ld\n", object->totalFSAccesses, track->getLatency());
       }
    
      	// Update the global windex after this cache line
       windex += words;
     }
- 
+
+		// If there is no cache invalidations, we should exit now. 
+		if(object->invalidations == 0) {
+				return false;
+		}
  
 		// Now get threads related information about this object.
 		int maxThreadIndex = xthread::getInstance().getMaxThreadIndex();
@@ -295,12 +306,26 @@ public:
 		object->totalThreadsCycles = 0;
 		object->totalThreads = 0;
 		object->longestThreadRuntime = 0;
-		
+	
+		struct wordinfo * winfoend = winfo + object->words;
+		//fprintf(stderr, "winfo %p winfoend %p\n", winfo, winfoend);
+		int tindex;
+		int unitwords; 
+		bool inside = false;
+
 		// We will check every word of this object.	
-		while(winfo < (winfo+ object->words)) {
-			int tindex = winfo->tindex;
-			int unitwords = winfo->unitsize/xdefines::WORD_SIZE;
-			bool inside = false;
+		while(winfo < winfoend) {
+			tindex = winfo->tindex;
+			unitwords = winfo->unitsize/xdefines::WORD_SIZE;
+			inside = false;
+
+			//fprintf(stderr, "line %d: check THREADindex %d winfo->unitsize %d\n", __LINE__, tindex, winfo->unitsize);
+			if(winfo->unitsize == 0 || winfo->tindex > xdefines::MAX_THREADS) {
+				winfo++;
+				continue;
+			}
+
+			//fprintf(stderr, "line %d: check index %d\n", __LINE__, tindex);
 
 			// Check whether this tid is recorded or not.
 			for(int i = 0; i < object->totalThreads; i++) {
@@ -312,6 +337,8 @@ public:
 
 			// If this thread index is not recorded, add it and update the total information.
 			if(inside == false && (tindex != cachetrack::WORD_THREAD_SHARED)) {
+
+			  //fprintf(stderr, "inside is false\n");
 				// Finding thread_t of this thread. 
 				thread_t * thisThread = xthread::getInstance().getThreadInfoByIndex(tindex);
 
@@ -321,7 +348,8 @@ public:
 		
 					object->totalThreadsAccesses += thisThread->accesses;
 					object->totalThreadsCycles += thisThread->latency;
-				
+			
+		//			fprintf(stderr, "THREADS %d: latency %lx\n", tindex, thisThread->latency);
 					if(object->longestThreadRuntime < thisThread->actualRuntime) {
 						object->longestThreadRuntime = thisThread->actualRuntime;
 					} 
@@ -334,47 +362,58 @@ public:
 			winfo+=unitwords;
 		}	
 
+		//fprintf(stderr, "line %d: object->totalThreads %ld\n", __LINE__, object->totalThreads);
 		// After the checking, we will try to compute the total information for a falsely-shared object.
 		// We currently don't care those truely-sharing objects.			
 		if(object->totalThreads > 0) {
 				// Now we have traversed all words.
 				thread_t * initialThread = xthread::getInstance().getThreadInfoByIndex(0);
 
-				assert(initialThread->accesses != 0);
- 
- 				unsigned long cyclesWithoutFS  = (initialThread->latency * 100)/initialThread->accesses;
-				
-				// Now we can compute the performance improvement.
+				//assert(initialThread->accesses != 0);
+
+				// How many cycles for each non-FS access 
+ 				unsigned long cyclesWithoutFS = xdefines::CYCLES_PER_NONFS_ACCESS * 100; // the default one
+				if(initialThread->accesses != 0) {
+				 	cyclesWithoutFS = (initialThread->latency * 100)/initialThread->accesses;
+				}
+
+
+				assert(object->totalThreadsCycles >= object->totalFSCycles);
+				assert(object->totalFSAccesses > 0);
+
+				// Compute the possible cycles without FS by replacing with cyclesWithoutFS.
 				object->predictThreadsCycles = object->totalThreadsCycles - object->totalFSCycles + ((object->totalFSAccesses * cyclesWithoutFS)/100);
 				double threadImprove = (double)(object->predictThreadsCycles)/(double)object->totalThreadsCycles;
 				object->threadReduceRate = threadImprove;
 							
+	//			fprintf(stderr, "cyclesWithoutFS %ld reducedrate %f\n", cyclesWithoutFS, object->threadReduceRate);
 				// Check whether involved threads are on the critical path of correponding thread level.
 				unsigned long realTotalRuntime = 0;
 				unsigned long predictTotalRuntime = 0;
 				unsigned long threadLevels = xthread::getInstance().getTotalThreadLevels();
 
-				// We actually check all levels.
+				// Traverse all levels about runtime.
 				for(int i = 0; i <= threadLevels; i++) {
 					struct threadLevelInfo * levelinfo = xthread::getInstance().getThreadLevelByIndex(i);
 				
 					// Now check whether this level is serial phase or not.
 					realTotalRuntime += levelinfo->elapse;
 					if(levelinfo->beginIndex == levelinfo->endIndex) {
-						// In this situation, index is not actual thread index at all. 
+						// This is the serial phase. 
 						predictTotalRuntime += levelinfo->elapse;
 					}
 					else {
 						// Predict how much the performance can be affected by the possible improvement.
-						// In all threads of this level, find out the longest involving thread and 
-						// the longest nonrelated thread.
 						unsigned long involvedLongestRuntime = 0;
 						unsigned long nonrelatedLongestRuntime = 0;
+						
+						// In all threads of this level, find out the longest involving thread and 
+						// the longest nonrelated thread.
 						for(int j = levelinfo->beginIndex; j <= levelinfo->endIndex; j++) {
 							thread_t * thisThread = xthread::getInstance().getThreadInfoByIndex(j);
 							bool isFound = false;
 
-							// Compare this thread with all involved threads
+							// Find out the current thread is involved or not. 
 							for(int k = 0; k < object->totalThreads; k++) {
 								if(thisThread == object->threads[k]) {
 									isFound = true;
@@ -390,7 +429,7 @@ public:
 							}
 						} 	
 					
-						// Compute the predict runtime.
+						// Finally, we can compute the predicted runtime (predictTotalRuntime)
 						unsigned long predictThreadRuntime = (unsigned long)((double)involvedLongestRuntime * threadImprove);
 						if(predictThreadRuntime > nonrelatedLongestRuntime) {
 							predictTotalRuntime += predictThreadRuntime;
@@ -399,12 +438,11 @@ public:
 							predictTotalRuntime += nonrelatedLongestRuntime;
 						} 	
 					}	
-
 				}
 				
 				object->predictImprovement = ((double)realTotalRuntime - (double)predictTotalRuntime)/(double)realTotalRuntime; 
-				fprintf(stderr, "real totalRuntime %ld predicted TotalRuntime %ld\n", realTotalRuntime, predictTotalRuntime);	
-		//		fprintf(stderr, "initialthread cycles %ld predictCycles %ld actualcycles %ld threadImprove %f predicting improvement %f\n", cyclesWithoutFS, object->predictThreadsCycles, object->totalThreadsCycles, threadImprove, object->predictImprovement); 	
+	//			fprintf(stderr, "real totalRuntime %ld predicted TotalRuntime %ld\n", realTotalRuntime, predictTotalRuntime);
+				fprintf(stderr, "initialthread cycles %ld predictCycles %ld actualcycles %ld threadImprove %f predicting improvement %f\n", cyclesWithoutFS, object->predictThreadsCycles, object->totalThreadsCycles, threadImprove, object->predictImprovement); 	
 			}
 
     return hasFS; 
@@ -470,15 +508,18 @@ public:
       
 			// Check whether there are some invalidations on this object.
       ObjectInfo objectinfo;
-      objectinfo.isHeapObject = isHeap;
+      memset(&objectinfo, 0, sizeof(ObjectInfo));
+
+			objectinfo.isHeapObject = isHeap;
       objectinfo.unitlength = objectSize;
       objectinfo.words = objectSize/xdefines::WORD_SIZE;
       objectinfo.start = (unsigned long *)objectStart;
       objectinfo.stop = (unsigned long *)objectEnd;
-			objectinfo.winfo = allocWordinfo(object->words);
+			objectinfo.winfo = allocWordinfo(objectinfo.words);
          
       getCacheInvalidations(cachelineIndex, lines, &objectinfo);
 
+	//		fprintf(stderr, "cache invalidations %ld\n", objectinfo.invalidations);
       // For globals, only when we need to output this object then we need to store that.
       // Since there is no accumulation for global objects.
       if(objectinfo.invalidations > xdefines::THRESHOLD_REPORT_INVALIDATIONS) {
@@ -545,16 +586,14 @@ public:
     int size; 
 
 		// We should check the latency of an object
-    fprintf(stderr, "filename %s\n", _curFilename);
     fprintf(stderr, "FALSE SHARING: start %p end %p (with size %lx). Accesses %lx invalidations %lx writes %lx total latency on this object was %ld cycles.\n", object->start, object->stop, object->unitlength, object->totalFSAccesses, object->invalidations, object->totalWrites, object->totalFSCycles);
     fprintf(stderr, "Latency information: totalThreads %ld totalThreadsAccesses %lx totalThreadsCycles %ld longestRuntime %ld threadReduceRate %f totalPossibleImprovementRate %f\n\n", object->totalThreads, object->totalThreadsAccesses, object->totalThreadsCycles, object->longestThreadRuntime, object->threadReduceRate, object->predictImprovement);
     if(object->isHeapObject) { 
     fprintf(stderr, "It is a HEAP OBJECT with callsite stack:\n");
       for(int i = 0; i < CALL_SITE_DEPTH; i++) {
         if(object->u.callsite[i] != 0) {
-//          sprintf(buf, "addr2line -i -e %s %lx", _curFilename, object->u.callsite[i]);
-          fprintf(stderr, "callsite: %lx\n", object->u.callsite[i]);
-//          ret = system(buf);
+		       sprintf(buf, "addr2line -a -e -i %s 0x%lx", _curFilename, object->u.callsite[i]);
+           ret = system(buf);
         }
       }
     }
