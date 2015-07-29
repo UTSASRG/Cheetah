@@ -434,7 +434,8 @@ public:
 				object->realTotalRuntime = realTotalRuntime;
 				object->predictTotalRuntime = predictTotalRuntime;
 	
-				object->predictImprovement = ((double)realTotalRuntime - (double)predictTotalRuntime)/(double)realTotalRuntime; 
+				object->predictImprovement = (double)realTotalRuntime/(double)predictTotalRuntime;
+				///(double)realTotalRuntime; 
 	//			fprintf(stderr, "real totalRuntime %ld predicted TotalRuntime %ld\n", realTotalRuntime, predictTotalRuntime);
 			//	fprintf(stderr, "initialthread cycles %ld predictCycles %ld actualcycles %ld threadImprove %f predicting improvement %f\n", cyclesWithoutFS, object->predictThreadsCycles, object->totalThreadsCycles, threadImprove, object->predictImprovement); 	
 			}
