@@ -582,7 +582,7 @@ public:
 
 		// We should check the latency of an object
     fprintf(stderr, "FALSE SHARING: start %p end %p (with size %lx). Accesses %lx invalidations %lx writes %lx total latency on this object was %ld cycles.\n", object->start, object->stop, object->unitlength, object->totalFSAccesses, object->invalidations, object->totalWrites, object->totalFSCycles);
-    fprintf(stderr, "Latency information: totalThreads %ld totalThreadsAccesses %lx totalThreadsCycles %ld longestRuntime %ld threadReduceRate %f totalPossibleImprovementRate %f (realRuntime %ld predictedRuntime %ld)\n\n", object->totalThreads, object->totalThreadsAccesses, object->totalThreadsCycles, object->longestThreadRuntime, object->threadReduceRate, object->predictImprovement, object->realTotalRuntime, object->predictTotalRuntime);
+    fprintf(stderr, "Latency information: totalThreads %ld totalThreadsAccesses %lx totalThreadsCycles %ld longestRuntime %ld threadReduceRate %f totalPossibleImprovementRate %f%% (realRuntime %ld predictedRuntime %ld)\n\n", object->totalThreads, object->totalThreadsAccesses, object->totalThreadsCycles, object->longestThreadRuntime, object->threadReduceRate, object->predictImprovement*100, object->realTotalRuntime, object->predictTotalRuntime);
     if(object->isHeapObject) { 
     fprintf(stderr, "It is a HEAP OBJECT with callsite stack:\n");
       for(int i = 0; i < CALL_SITE_DEPTH; i++) {
