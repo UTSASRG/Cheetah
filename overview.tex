@@ -63,6 +63,7 @@ Besides that, using performance counters does not need to instrument source code
 \cheetah{} is different with existing approaches using hardware performance counters in the same field~\cite{mldetect, openmp, detect:ptu}. Jayasena et. al. collects different types of events like memory accesses, data caches, TLBs, interactions among cores, and resources stalls, and derives potential memory patterns that can cause false sharing~\cite{mldetect}. DARWIN collects cache coherence events at first, then identifies possible memory accesses on those data structures that are involved in frequent cache invalidations ~\cite{openmp}. PTU actually relies on memory sampling mechanism but can not differentiate false sharing and true sharing since it discards the temporal information of memory accesses~\cite{detect:ptu}. More details on the difference have been discussed in Section~\ref{sec:relatedwork}.
 
 
+
 \subsubsection{Computing Cache Invalidations}
 \label{sec:computeinvalidations}
 
@@ -98,6 +99,11 @@ According to the basic rule that are described in Section~\ref{sec:basicidea}, o
       
 After the computation, 
 \cheetah{} ranks the severity of performance degradation of any detected false sharing problems according to the number of cache invalidations and the performance impact of a specific false sharing problem, which is discussed in the following section.  
+
+
+\todo{Shadow Memory mechanism}
+
+Why we should use the shadow memory? In order to use that, we have to intercept the memory allocations and deallocations. Intercepting the memory allocation and deallocation is also very important to precisely identify where the problem is from. For example, for heap objects, it is very helpful if a detect tool can point out where a heap object is coming from. 
 %\cheetah{} only reports those false sharing problems that can have a significant impact on the performance by predicting the upper bound of performance improvement, according to the idea that are discussed in Section~\ref{sec:predictidea}.  It will rank the severity of performance degradation of any detected false sharing problems based on the predicted performance improvement after fixes.
 
 \subsection{Basic Idea of Predicting Performance Impact}
