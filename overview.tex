@@ -118,7 +118,7 @@ However, by utilizing its custom heap, \cheetah{} can not report false sharing p
 
 \paragraph{Current problem:} None of existing tools can predict the performance impact of false sharing instances~\cite{sheriff, Predator, openmp}. At most, they can report the number of cache invalidations caused by a particular false sharing problem. Unfortunately, the number of cache invalidations does not equal to the potential performance impact after fixing, where fixing a falsely-shared program with a big number of cache invalidations may not improve its performance a lot . Thus, existing tools reported some insignificant false sharing problems. For example, fixing reported false sharing in reverse\_index brings less than 1\% performance improvement~\cite{sheriff, Predator}. Insignificant false sharing instances are not false positives, but reporting them increases manual burden for programmers and brings no performance benefit. 
 
-\Cheetah{} aims to only report false sharing problems that will have significant performance improvement after fixes. \Cheetah{} utilizes the latency information (e.g. cycles) of every memory access that can be provided by performance monitoring units, either Intel's PEBS registers or AMD's IBS registers. 
+\Cheetah{} aims to report false sharing problems that will have significant performance improvement after fixes. \Cheetah{} utilizes the latency information (e.g. cycles) of every memory access that can be provided by performance monitoring units, either Intel's PEBS registers or AMD's IBS registers. 
 
 To predict the performance impact, \Cheetah{} first assumes that the sampling results represent the whole execution, which is reasonable given that sampling is evenly distributed among the whole execution. Since performance monitoring units can only provide the latency information of cycles, \Cheetah{} uses the sum of cycles to represent the running time in the prediction.  
 
@@ -126,7 +126,7 @@ To predict the performance impact, \Cheetah{} first assumes that the sampling re
 falsely-shared object are replaced by the average cycles of every memory access without false sharing}. Since fixing one false sharing may affect the latency on other memory addresses, \cheetah{} further assumes that the latency of other memory accesses are intact. \cheetah{} will compute the performance improvement based on EQ.(\ref{eq:improvement}), where runtime is denoted by $RT$. 
 \begin{equation}
 \label{eq:improvement}
-Perf_{improve}=(RT_{actual} - RT_{predict})/RT_{actual}
+Perf_{improve}=RT_{actual}/RT_{predict}
 \end{equation} 
 
 

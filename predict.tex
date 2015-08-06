@@ -1,9 +1,11 @@
-\subsection{Predicting Performance Impact}
+%\subsection{Predicting Performance Impact}
 
 \label{sec:predictimprove}
 
 %Fixing false sharing problems can be non-trivial, even with precise information about a particular false sharing problem. Several problems may occur. The first problem is that some false sharing problems can be insignificant. For example, \sheriff{} reports false sharing problems in word\_count or reverse\_index applications in Phoenix benchmark suites. However, fixing  them brings negligible performance benefit. The second problem is that fixing false sharing problem may even slow down the program because of excessive memory consumption or lose of locality, as observed by Zhao et. al. ~\cite{qinzhao}. 
-\Cheetah{} currently only predicts the performance impact of false sharing in programs with the normal fork-join model that does not have nested threads. The normal fork-join model, shown as Figure~\ref{fig:forkjoinmodel}, is the most popular model in multithreading applications, as evidenced by all evaluated applications. 
+
+To prove its concept, \cheetah{} currently predicts the performance impact for programs with simple fork-join models, shown as Figure~\ref{fig:forkjoinmodel}. 
+The fork-join model is the most important and popular model in multithreading applications, as evidenced by all evaluated applications in this paper. 
 
 \begin{figure*}[ht!]
 \begin{center}
@@ -14,23 +16,44 @@
 \end{figure*}
 
 
-This section focuses on the detailed algorithm of prediction: it first collects the actual execution time of different threads;  
-%We will talk about how to get 
+%\cheetah{} collects the execution information on different phases, different threads, and different objects. 
 
-\subsection{Getting Actual Execution Time}
+This section will present the details of \cheetah{}'s prediction. Let's describe the general idea using the Figure~\ref{fig:forkjoinmodel} as an example. In this example, only thread $T1$ and $T2$ are involved in a falsely-shared object $O$, \cheetah{} has to know the following information:
+
+\begin{itemize}
+\item $Cycles\_O$: cycles of accesses on the object $O$.
+\item $Accesses\_O$: the number of accesses on the object $O$.  
+\item $Cycles\_{nofs}$: average cycles of every memory access on non-FS objects. 
+\item The execution time of different threads.  
+\item The execution time of different phases. 
+\end{itemize}
+
+After getting all information, \cheetah{} first computes the possible improvement rate by using $Cycles\_O$, $Accesses\_O$ and $Cycles\_{nofs}$ as EQ.(\ref{eq:improvement2}). 
+\begin{equation}
+\label{eq:improvement2}
+ ImproveRate = (Accesses\_O * Cycles\_{nofs})/Cycles\_O;
+\end{equation} 
+
+Using the $ImproveRate$, we can compute the possible runtime of $T1$ and $T2$ after fixing the false sharing problem of object $O$, which are equal to the product of the actual runtime and $ImproveRate$. If the computed runtime is less than the length of $T3$ in parallel phase I, fixing the false sharing problem of object $O$ won't contribute any performance improvement of the program. Otherwise, it can benefit the performance. Then we compute the new runtime of parallel phase I, which equals to the longest runtime of thread $T1$, $T2$ or $T3$. Based on this, we computes the new runtime of this program, where the execution time of other phases should not be affected. In the end, \cheetah{} predicts the possible performance rate of fixing every false sharing problem so that programs can focus on those important problems. 
+
+\subsection{Collecting Execution Information}
 \label{sec:getactualtime}
 
-According to EQ.(\ref{eq:improvement}), to compute the performance improvement, we have to get the actual execution time ($RT_{actual}$). 
-\fixme{For simplicity, \cheetah{} collects the actual execution time using RDTSC (ReaD-Time Stamp Counter) on X86 machines}.  \cheetah{} does not use access cycles of threads since the execution time can highly depends on how many threads are created and how they are running on different cores, which is too complicated to compute.  
+\paragraph{Threads Model Information:} For fork-join models, only the main/initial thread can perform spawning operations. It is easy to verify this by intercepting spawning functions, such as the \texttt{pthread\_create} functions of programs using the \texttt{pthreads} library. 
 
-To predict the performance impact of a false sharing instance, \Cheetah{} also tracks the relationship of different threads by maintaining a tree graph like the example shown in Figure~\ref{fig:forkjoinmodel}. \Cheetah{} also collects the execution time of different phases and different threads. Based on these information, \Cheetah{} can predict the performance impact of a certain false sharing instance. 
+\paragraph{Phase information:} \Cheetah{} collects the execution time of different serial and parallel phases using RDTSC (ReaD-Time Stamp Counter) on X86 machines.  The difference between the stopping point and the starting point will be considered as the length of a phase. It is relatively easy for \cheetah{} to collect the length of serial phases since \cheetah{} intercepts the spawning operations. For the same reason, \cheetah{} gets the timestamps of the starting point and the stopping point of each thread, then uses the longest span of each thread as the length of every parallel phase. \Cheetah{} also tracks the number of accesses and the cycles of every accesses in serial phases. It uses the average cycles of every memory access in serial phases to be the $Cycles\_{nofs}$ discussed above.  
+ 
+\paragraph{Threads Information:} \Cheetah{} collects the following information of different threads: execution time, number of accesses, and number of cycles of all memory accesses. 
+
+\paragraph{Objects Information:}
+For each cache line, \cheetah{} gathers the number of cycles on each cache line. \cheetah{} also collect the number of accesses on each word. Thus, we can compute the number of cycles and accesses on falsely-shared objects. 
  
 \subsection{Predicting Execution Time after Fixes}
 \label{sec:predicttime}
 
-As described in Section~\ref{sec:predictidea}, \cheetah{} predicts the execution time after fixes by replacing the actual cycles of every memory access on a falsely-shared object with the average cycles of a memory access without false sharing. Actually, those memory accesses related to true sharing should be ruled out as well since they are also much slower. 
+\cheetah{} predicts the execution time after fixes by replacing the actual cycles of every memory access on a falsely-shared object with the average cycles of a memory access without false sharing. 
 
-According to this idea, \cheetah{} should know the average cycles of a memory access without false sharing and true sharing. To know exactly about this value, we have to compute the number of cycles of all memory accesses without false sharing and true sharing. But that is not easy. \Cheetah{} actually utilizes the average access cycles of every memory access in serial phases (denoted as $AverageCycles_{nofs}$) to approximate this value, which is reasonable since all memory accesses in serial phases should not involve in both false sharing and true sharing. 
+According to this, \cheetah{} should know the average cycles of a memory access without false sharing and true sharing. \Cheetah{} actually utilizes the cycles of every memory access in serial phases (denoted as $Cycles_{nofs}$) to approximate this value, which is reasonable since all memory accesses in serial phases should not involve in both false sharing and true sharing. 
 
 Actual cycles of every memory access that are involving in a falsely-shared object can be changed from one execution to another. Thus, \cheetah{} utilizes the total number of all memory accesses instead to predict the performance impact. \Cheetah{} computes the possible performance improvement prediction in the following steps.
  
@@ -48,7 +71,6 @@ $RT_{threads} = Cycles_{threads}  $.
 
 
 
-\cheetah{} collects the actual execution time 
 \cheetah{} will utilize the latency information of every access to predict the performance impact of a certain false sharing instance. These latency information, normally CPU cycles of every sampled memory access, can be provided by hardware PMUs. \Cheetah{} plans to track detailed memory accesses on falsely-shared objects and on normal objects without false sharing. Thus, we can know the average cycles of every memory access without false sharing. 
 
 \cheetah{} provides a upper bound on performance improvement after fixes. 
@@ -60,7 +82,7 @@ We only compute the cycles and threads for the parallel phases.
 
 \subsection{Predicting Performance Improvement}
 
-There are several steps to evaluate the performance impact. We will consider the average cycles on every access in serial phases as $Cycles_{serial}$. 
+%There are several steps to evaluate the performance impact. We will consider the average cycles on every access in serial phases as $Cycles_{serial}$. 
 
  % How to avoid huge performance overhead? We introducing per-thread recording mechanism. 
 
