@@ -3,17 +3,18 @@
 \label{sec:predictimprove}
 
 %Fixing false sharing problems can be non-trivial, even with precise information about a particular false sharing problem. Several problems may occur. The first problem is that some false sharing problems can be insignificant. For example, \sheriff{} reports false sharing problems in word\_count or reverse\_index applications in Phoenix benchmark suites. However, fixing  them brings negligible performance benefit. The second problem is that fixing false sharing problem may even slow down the program because of excessive memory consumption or lose of locality, as observed by Zhao et. al. ~\cite{qinzhao}. 
-
-We have discussed the basic idea of predicting performance impact of false sharing instances in Section~\ref{sec:predictidea}. This section focuses on the detailed algorithm of prediction. \Cheetah{} currently only predicts the performance impact of false sharing in programs with the normal fork-join model that does not have nesting threads. This normal fork-join model, shown as Figure~\ref{fig:forkjoinmodel}, is the most popular model in multithreading applications, as evidenced by all evaluated applications. 
+\Cheetah{} currently only predicts the performance impact of false sharing in programs with the normal fork-join model that does not have nested threads. The normal fork-join model, shown as Figure~\ref{fig:forkjoinmodel}, is the most popular model in multithreading applications, as evidenced by all evaluated applications. 
 
 \begin{figure*}[ht!]
 \begin{center}
 \includegraphics[width=6.5in]{figure/forkjoin}
 \end{center}
-\caption{\Cheetah{} can predict the performance impact of false sharing inside applications with normal fork-join model.
+\caption{Currently \Cheetah{} can predict the performance impact of false sharing inside applications with the normal fork-join model.
 \label{fig:forkjoinmodel}}
 \end{figure*}
 
+
+This section focuses on the detailed algorithm of prediction: it first collects the actual execution time of different threads;  
 %We will talk about how to get 
 
 \subsection{Getting Actual Execution Time}
