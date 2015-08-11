@@ -55,12 +55,13 @@ Combining with these two assumptions, \cheetah{} can practically compute the num
 
 According to the basic rule described in Section~\ref{sec:basicidea}, we should track memory accesses of different threads in order to compute the number of cache invalidations on each cache line. 
 
-The previous work \Predator{} leverages on compiler instrumentation to insert function calls before every memory access that is going to handled by \Predator{}'s runtime system~\cite{Predator}. However, this approach introduces more than $5\times$ performance overhead by handling every memory access. More than that, \Predator{} has to re-compile applications, which needs the availability of source code. \Predator{} is not desirable for legacy applications or real deployment that is sensitive to performance. 
+The previous work \Predator{} leverages on compiler instrumentation to insert function calls before every memory access that is going to handled by \Predator{}'s runtime system~\cite{Predator}. However, this approach introduces more than $5\times$ performance overhead by instrumenting every memory access. More than that, \Predator{} has to re-compile applications, which needs the availability of source code. \Predator{} is not desirable for legacy applications without the source code, or real deployment that is sensitive to performance. 
 
 \cheetah{} aims to significantly reduce the performance overhead by leveraging hardware performance counters that are available on most modern hardware. Hardware performance counters provide sampling-based memory access information about how the hardware is being exercised by a program, such as read/write operations, memory addresses, threads~\cite{Mucci99papi}. These information is enough to compute the number of cache invalidations based on the basic rule that is described in Section~\ref{sec:basicidea}. Because hardware performance counter only samples a memory access out of a specified number, it doesn't pose significant performance overhead. 
 Besides that, using performance counters does not need to instrument source code explicitly, thus providing a non-intrusive way to monitor memory references. 
 
-\cheetah{} is different with existing approaches using hardware performance counters in the same field~\cite{mldetect, openmp, detect:ptu}. Jayasena et. al. collects different types of events like memory accesses, data caches, TLBs, interactions among cores, and resources stalls, and derives potential memory patterns that can cause false sharing~\cite{mldetect}. DARWIN collects cache coherence events at first, then identifies possible memory accesses on those data structures that are involved in frequent cache invalidations ~\cite{openmp}. PTU actually relies on memory sampling mechanism but can not differentiate false sharing and true sharing since it discards the temporal information of memory accesses~\cite{detect:ptu}. More details on the difference have been discussed in Section~\ref{sec:relatedwork}.
+\cheetah{} is different with existing approaches using hardware performance counters in the same field~\cite{mldetect, openmp, detect:ptu}. Jayasena et. al. collects different types of events like memory accesses, data caches, TLBs, interactions among cores, and resources stalls, and derives potential memory patterns that can cause false sharing~\cite{mldetect}. DARWIN collects cache coherence events at the first round, then identifies possible memory accesses on those data structures that are involved in frequent cache invalidations for the second round~\cite{openmp}. DARWIN also requires manual effort or expertise to verify whether false sharing occurs or not.  Intel's PTU also relies on memory sampling mechanism but can not differentiate false sharing and true sharing since it discards the temporal information of memory accesses~\cite{detect:ptu}. More details on the difference have been discussed in Section~\ref{sec:relatedwork}.
+
 
 
 \subsubsection{Computing Cache Invalidations}
@@ -98,14 +99,26 @@ According to the basic rule that are described in Section~\ref{sec:basicidea}, o
       
 After the computation, 
 \cheetah{} ranks the severity of performance degradation of any detected false sharing problems according to the number of cache invalidations and the performance impact of a specific false sharing problem, which is discussed in the following section.  
+
+
+\subsubsection{Shadow Memory and Custom Heap}
+
+For each sampled memory access, \cheetah{} has to compute the cache invalidations based the rule that is discussed above. Thus, it is very important to implement this efficiently. \Cheetah{} utilizes the shadow memory mechanism to achieve this target, which has been utilized extensively in different fields, such as detecting concurrency bugs~\cite{Harrow:2000:RCM:645880.672080, helgrind, 404681, Savage:1997:EDD:268998.266641}, tracking information flow or data flow~\cite{Cheng:2006:TEF:1157733.1157903, Newsome05dynamictaint, Qin:2006:LLP:1194816.1194834}, or detecting memory errors or others~\cite{qinzhao, Hastings91purify:fast, Seward:2005:UVD:1247360.1247362, Narayanasamy:2006:ALO:1140277.1140303}. 
+
+It is very hard to know the range of heap memory if using the default heap, which complicates the implementation of the shadow memory mechanism. Thus, \cheetah{} built its custom heap based on Heap Layers~\cite{heaplayers}. \cheetah{} pre-allocates a fixed size of memory
+from its underlying operating system using \texttt{mmap} system calls and satisfies memory allocations from this block of memory. \cheetah{} also adapts the per-thread heap organization used by Hoard~\cite{Hoard}. 
+
+Each heap object has the size of {\it power of $2$}, known as block size. When an object is allocated, \cheetah{} adds an object header to each object, which has the size information of each object. To find out where an heap is allocated, \cheetah{} also stores its allocation call stack on its header, thus it can report the line information of falsely-shared objects. 
+
+However, by utilizing its custom heap, \cheetah{} can not report false sharing problems caused by the heap allocator. For example, some heap allocators may allocate two objects in the same cache line to two different threads, which can also cause false sharing problems. But we argue that this problem should be fixed by using a modern heap allocator like Hoard~\cite{Hoard}.  
 %\cheetah{} only reports those false sharing problems that can have a significant impact on the performance by predicting the upper bound of performance improvement, according to the idea that are discussed in Section~\ref{sec:predictidea}.  It will rank the severity of performance degradation of any detected false sharing problems based on the predicted performance improvement after fixes.
 
 \subsection{Basic Idea of Predicting Performance Impact}
 \label{sec:predictidea}
 
-\paragraph{Current problem:} None of existing tools can predict the performance impact of false sharing instances~\cite{sheriff, Predator, openmp}. At most, they can report the number of cache invalidations caused by a particular false sharing problem. Unfortunately, the number of cache invalidations does not equal to the potential performance impact after fixing. Thus, existing tools reported some insignificant false sharing problems. For example, fixing reported false sharing in reverse\_index brings less than 1\% performance improvement~\cite{sheriff, Predator}. Insignificant false sharing instances are not false positives, but reporting them increases manual burden for programmers and brings no performance benefit. 
+\paragraph{Current problem:} None of existing tools can predict the performance impact of false sharing instances~\cite{sheriff, Predator, openmp}. At most, they can report the number of cache invalidations caused by a particular false sharing problem. Unfortunately, the number of cache invalidations does not equal to the potential performance impact after fixing, where fixing a falsely-shared program with a big number of cache invalidations may not improve its performance a lot . Thus, existing tools reported some insignificant false sharing problems. For example, fixing reported false sharing in reverse\_index brings less than 1\% performance improvement~\cite{sheriff, Predator}. Insignificant false sharing instances are not false positives, but reporting them increases manual burden for programmers and brings no performance benefit. 
 
-\Cheetah{} aims to only report false sharing problems that will have significant performance improvement after fixes. \Cheetah{} utilizes the latency information (e.g. cycles) of every memory access that can be provided by performance monitoring units, either Intel's PEBS registers or AMD's IBS registers. 
+\Cheetah{} aims to report false sharing problems that will have significant performance improvement after fixes. \Cheetah{} utilizes the latency information (e.g. cycles) of every memory access that can be provided by performance monitoring units, either Intel's PEBS registers or AMD's IBS registers. 
 
 To predict the performance impact, \Cheetah{} first assumes that the sampling results represent the whole execution, which is reasonable given that sampling is evenly distributed among the whole execution. Since performance monitoring units can only provide the latency information of cycles, \Cheetah{} uses the sum of cycles to represent the running time in the prediction.  
 
@@ -113,7 +126,7 @@ To predict the performance impact, \Cheetah{} first assumes that the sampling re
 falsely-shared object are replaced by the average cycles of every memory access without false sharing}. Since fixing one false sharing may affect the latency on other memory addresses, \cheetah{} further assumes that the latency of other memory accesses are intact. \cheetah{} will compute the performance improvement based on EQ.(\ref{eq:improvement}), where runtime is denoted by $RT$. 
 \begin{equation}
 \label{eq:improvement}
-Perf_{improve}=(RT_{actual} - RT_{predict})/RT_{actual}
+Perf_{improve}=RT_{actual}/RT_{predict}
 \end{equation} 
 
 
