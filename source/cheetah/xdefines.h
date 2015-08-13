@@ -128,7 +128,10 @@ extern "C"
 
 	// Get theap id
 	inline int getHeapId(void) {
-		return current->heapid;
+		if(current) 
+			return current->heapid;
+		else 
+			return 0;
 	}
 
   // Get thread index

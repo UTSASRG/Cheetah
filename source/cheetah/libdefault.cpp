@@ -20,7 +20,7 @@ extern "C" {
   #define INITIAL_MALLOC_SIZE 81920
   static char * tempalloced = NULL;
   static int remainning = 0;
-  __thread thread_t * current;
+  __thread thread_t * current = NULL;
   __thread bool isBacktrace = false;
   xmemory  & _memory = xmemory::getInstance();
 
