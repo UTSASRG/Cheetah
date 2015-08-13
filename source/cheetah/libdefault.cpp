@@ -17,9 +17,7 @@ extern "C" {
   unsigned long globalStart, globalEnd;
   unsigned long heapStart, heapEnd;
 	bool _isMultithreading = false;
-  #define INITIAL_MALLOC_SIZE 81920
-  static char * tempalloced = NULL;
-  static int remainning = 0;
+	enum { InitialMallocSize = 1024 * 1024 * 1024 };
   __thread thread_t * current = NULL;
   __thread bool isBacktrace = false;
   xmemory  & _memory = xmemory::getInstance();
@@ -32,14 +30,6 @@ extern "C" {
   void initializer (void) {
     // Using globals to provide allocation
     // before initialized.
-    // We can not use stack variable here since different process
-    // may use this to share information. 
-    static char tempbuf[INITIAL_MALLOC_SIZE];
-
-    // temprary allocation
-    tempalloced = (char *)tempbuf;
-    remainning = INITIAL_MALLOC_SIZE;
-
     init_real_functions();
  
     xrun::getInstance().initialize();
@@ -61,30 +51,38 @@ extern "C" {
 
   // Temporary mallocation before initlization has been finished.
   static void * tempmalloc(int size) {
-    void * ptr = NULL;
-    if(remainning < size) {
-      // complaining. Tried to set to larger
-   //   printf("Not enough temporary buffer, size %d remainning %d\n", size, remainning);
-      exit(-1);
+    static char _buf[InitialMallocSize];
+    static int _allocated = 0;
+  
+    if(_allocated + size > InitialMallocSize) {
+      printf("Not enough space for tempmalloc");
+      abort();
+    } else {
+      void* p = (void*)&_buf[_allocated];
+      _allocated += size;
+      return p;
     }
-    else {
-      ptr = (void *)tempalloced;
-      tempalloced += size;
-      remainning -= size;
-    }
-    return ptr;
   }
 
   /// Functions related to memory management.
   void * malloc (size_t sz) {
     void * ptr;
-  //  printf("**MALLOC sz %ld, initialized %d******\n", sz, initialized);
-    if (!initialized) {
-      ptr = tempmalloc(sz);
-    } else {
-   // printf("**actual MALLOC sz %ld *\n", sz);
-      ptr = xmemory::getInstance().malloc (sz);
+    if(sz == 0) {
+      sz = 1;
     }
+
+    // Align the object size. FIXME for now, just use 16 byte alignment and min size.
+    if(!initialized) {
+      if (sz < 16) {
+        sz = 16;
+      }
+      sz = (sz + 15) & ~15;
+      ptr = tempmalloc(sz);
+    }
+    else {
+      ptr = xmemory::getInstance().malloc(sz);
+    }
+
     if (ptr == NULL) {
       fprintf (stderr, "Out of memory!\n");
       ::abort();
@@ -119,16 +117,20 @@ extern "C" {
 
   // Implement the initialization
   void * memalign (size_t boundary, size_t size) {
-    if(initialized) {
-      return xmemory::getInstance().memalign(boundary, size);
+    if(!initialized) {
+			initializer();
     }
-	  fprintf(stderr, "Does not support memalign. boundary %lx, size %lx\n", boundary, size);
-//    ::abort();
-    return NULL;
+    return xmemory::getInstance().memalign(boundary, size);
+   // return NULL;
   }
 
   void * realloc (void * ptr, size_t sz) {
-    return xmemory::getInstance().realloc (ptr, sz);
+    if(initialized) {
+      return xmemory::getInstance().realloc(ptr, sz);
+    }
+    else {
+      return tempmalloc(sz);
+    }
   }
   
 	// Intercept the pthread_create function.
