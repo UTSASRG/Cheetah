@@ -1,4 +1,13 @@
+\section{Implementation Details}
 \label{sec:implement}
+
+
+
+
+
+\begin{comment}
+
+
 This section presents the detailed implementation of \Cheetah{}'s detection: it first describes how to sample memory accesses (in Section~\ref{sec:detect-trace}) and how to compute the number of cache invalidations based on the pattern of memory accesses (see Section~\ref{sec:compute}); then we describes how to report false sharing precisely and correctly (see Section~\ref{sec:report});
 
 %\redmark{Should we add a figure about different components??}
@@ -37,6 +46,7 @@ In the implementation, \Cheetah{} maintains two arrays in the shadow memory: {\i
 \paragraph{Precise Detection.} \Cheetah{} reports precise information for global variables and heap objects that are involved in false sharing. For global variables, \Cheetah{} reports names and addresses by searching through the ELF symbol table. For heap objects, \Cheetah{} reports the lines of code for allocating these objects.  
 Thus, \Cheetah{} intercepts all memory allocations and de-allocations and utilizes \texttt{backtrace()} to obtain the whole callsite stack. During the real implementation, we tried to keep the overhead of getting the callsite stack as little as possible. \cheetah{} utilizes a global hash table to save those known callsite stack. The combination of ``rip'' (instruction pointer) and ``stack offset'' is considered as the key of this global hash table. If the combination of these two values (as the key) have existed in the global hash table, we simply copied the saved callsite stack to a new object. Otherwise, backtrace() is called to fetch the callstack.  
 
+\end{comment}
 %However, it is straightforward to solve such false sharing problems by using an allocator like Hoard that avoids this kind of false sharing.
 
 
