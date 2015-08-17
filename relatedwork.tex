@@ -1,16 +1,34 @@
 \label{sec:relatedwork}
+In this section, we review existing lightweight techniques for identifying memory bottlenecks and the tools specifically focusing on analyzing false sharing issues.
 
-\subsection{False Sharing Detection}
-Jayasena et. al. proposes to identify possible memory access patterns that can be caused by false sharing by utilizing a machine learning approach~\cite{mldetect}. Their approach collects events about memory accesses, data caches, TLBs, interactions among cores, and resources stalls, and derives potential memory patterns that can cause false sharing. However, their approach only identify a subset of false sharing problems that are found by \Predator{}~\cite{Predator} and DARWIN~\cite{openmp}. DARWIN utilizes Data Event Ad-
-dress Register (DEAR) on the Itanium 2 processor to sample memory reads~\cite{Wicaksono11detectingfalse, openmp}. Different with \Cheetah{}, DARWIN detects cache coherence events in the first execution and then identifies data structures that can possibly cause false sharing in the second execution.  However, DARWIN cannot present precise information about falsely-shared cache lines. Intel's Performance Tuning Utility (PTU) is a commercialized tool to utilize Intel's (Precise Event Based Sampling registers (PEBS) to detect false sharing. But it cannot pinpoint the root cause of false sharing objects since it does not intercept those memory allocations. 
+\subsection{Analyzing Memory Bottlenecks Efficiently}
+
+Associating analysis with data objects is an effective way to identify memory bottlenecks. Many existing tools, such as MemSpy~\cite{} and MACPO~\cite{}, to achieve this by tracing memory accesses. However, such kind of tools have unaffordable overhead, especially for monitoring production code. Thus, researchers developed lightweight tools based on hardware sampling techniques.
+
+Itzkowitz et al.\ introduced memory profiling to Sun ONE Studio~\cite{DBLP:conf/sc/ItzkowitzWAK03}, which uses event-based sampling (EBS). 
+They apply this tool to collect and analyze memory accesses in a sequential program and report measurement data in flat profiles. As described in Section~\ref{background:sampling}, EBS has a shortcoming of ``skid", which leads to inaccurate attribution of samples to instructions.
+Sun ONE Studio attempted to compensate for EBS attribution skid using a backtracking search.
+
+Buck and Hollingsworth developed Cache Scope~\cite{DBLP:conf/sc/BuckH04} to perform data-centric analysis using 
+Itanium2 event address registers (EAR).
+Cache Scope associates latency with data objects and functions that accessed them.
+
+HPCToolkit~\cite{ibs-sc} uses Intel PEBS and AMD IBS to associate performance metrics with both static and heap allocated data objects. It identifies problematic data objects with poor cache locality and long access latency. With similar techniques, ArrayTool~\cite{ibs-pact} further analyzes the samples to provide optimization guidance for array regrouping.
+
+These tools, with a common feature, have low measurement overhead, typically less than 10\%. However, they do not provide any insights about false sharing. One may know that a data object suffers from high access latency, but there is no knowledge about whether the high latency comes from false sharing or not. In contrast, \cheetah{} can identify false sharing and also associate it with problematic data objects.
+
+
+\subsection{Detecting and Quantifying False Sharing Problems}
+Jayasena et. al. proposes to identify possible memory access patterns that can be caused by false sharing by utilizing a machine learning approach~\cite{mldetect}. Their approach collects events about memory accesses, data caches, TLBs, interactions among cores, and resources stalls, and derives potential memory patterns that can cause false sharing. However, their approach only identify a subset of false sharing problems that are found by \Predator{}~\cite{Predator} and DARWIN~\cite{openmp}. DARWIN utilizes Data Event Address Register (DEAR) on the Itanium 2 processor to sample memory reads~\cite{Wicaksono11detectingfalse, openmp}. Different with \Cheetah{}, DARWIN detects cache coherence events in the first execution and then identifies data structures that can possibly cause false sharing in the second execution.  However, DARWIN cannot present precise information about falsely-shared cache lines. Intel's Performance Tuning Utility (PTU) is a commercialized tool to utilize Intel's (Precise Event Based Sampling registers (PEBS) to detect false sharing. But it cannot pinpoint the root cause of false sharing objects since it does not intercept those memory allocations. Moreover, PTU does not distinguish true and false sharing. 
+
+ScaAnalyzer~\cite{} studies memory scalability in multithreaded programs. As false sharing is a kind of memory scalability bottleneck, ScaAnalyzer can pinpoint it and assess its impact with the increasing number of cores. 
+
 All of these tools suffer the same shortcoming: they cannot differentiate false sharing , leaving much burden to programmers for fixing false sharing problems. 
 
-\subsection{Performance Prediction} 
 There is no much work in performance prediction. Balsamo et. al.~\cite{Balsamo:2004:MPP:987527.987640} presents an overview on performance prediction on software systems. 
 Fahringer et. al. proposes to predict the performance on distributed memory multiprocessor systems, by relying on compiler analysis. 
 
+%\section{Future Work}
 
-\section{Future Work}
-
-We are going to utilize the prediction technique that we are utilized to predict the more complicated thread model, not just fork-join models. 
+%We are going to utilize the prediction technique that we are utilized to predict the more complicated thread model, not just fork-join models. 
 
