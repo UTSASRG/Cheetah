@@ -18,7 +18,7 @@ The fork-join model is the most important and popular model in multithreading ap
 
 %\cheetah{} collects the execution information on different phases, different threads, and different objects. 
 
-This section will present the details of \cheetah{}'s prediction. Let's describe the general idea using the Figure~\ref{fig:forkjoinmodel} as an example. In this example, only thread $T1$ and $T2$ are involved in a falsely-shared object $O$, \cheetah{} has to know the following information:
+This section will present the details of \cheetah{}'s prediction. We first describe the general idea using the Figure~\ref{fig:forkjoinmodel} as an example. In this example, only thread $T1$ and $T2$ are involved in a falsely-shared object $O$, \cheetah{} has to know the following information:
 
 \begin{itemize}
 \item $Cycles\_O$: cycles of accesses on the object $O$.
