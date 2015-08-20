@@ -1,8 +1,82 @@
-%\subsection{Predicting Performance Impact}
+\section{Assessing the Performance Impact}
 
 \label{sec:predictimprove}
 
-%Fixing false sharing problems can be non-trivial, even with precise information about a particular false sharing problem. Several problems may occur. The first problem is that some false sharing problems can be insignificant. For example, \sheriff{} reports false sharing problems in word\_count or reverse\_index applications in Phoenix benchmark suites. However, fixing  them brings negligible performance benefit. The second problem is that fixing false sharing problem may even slow down the program because of excessive memory consumption or lose of locality, as observed by Zhao et. al. ~\cite{qinzhao}. 
+Fixing false sharing problems can be non-trivial, even with precise information about a particular false sharing problem. However, we may not improve the performance by fixing false sharing problems. For example, existing tools report a big number of cache invalidations that are caused by false sharing in word\_count or reverse\_index applications, but fixing them brings negligible performance improvement~\cite{Sheriff, Predator}. Zhao et. al. even observed that fixing may slowdown a program because of excessive memory consumption or the lose of locality~\cite{qinzhao}. Reporting insignificant false sharing instances are not false positives, but that increases manual burden for programmers.
+
+To resolve this problem, \cheetah{} makes the first attempt to quantitatively assess the potential performance gain of fixing a particular false sharing problem. So that programmers can focus on severe problems only, avoiding unnecessary manual effort.
+%We cannot found any work in assessing the performance impact of fixing false sharing problems maybe because of its difficulty. 
+
+\subsection{Basic Idea}
+
+\cheetah{}'s assessment is based on the following observations:
+
+\begin{itemize}
+\item Since sampling is evenly distributed over the whole execution, thus we can use the results of sampling to represent the whole execution. Exiting works like Oprofile and Gprof use the sampling technique to identify the hotspots of function calls and code~\cite{oprofile, DBLP:conf/sigplan/GrahamKM82}.
+
+\item PMU hardware provides the latency information (e.g. cycles) of each memory load operation. We also observed that the latency of accessing falsely shared objects is significantly higher than that of normal accesses. 
+
+\end{itemize}
+
+To access the performance improvement of fixing a false sharing instance, \cheetah{} will compute the performance improvement based on EQ.(\ref{eq:improvement}), where runtime is denoted by $RT$.
+\begin{equation}
+\label{eq:improvement}
+Perf_{improve}=RT_{actual}/RT_{predict}
+\end{equation}
+
+As described in the second observation, we propose to use the cycles of an execution to represent the execution time.  
+%Thus, based on this equation, the most important thing is to compute $RT_{predict}$, which can be represented by the cycles of accesses after fixing a false sharing instance. $RT_{actual}$ can represented by the sampled cycles of accesses.
+
+%Although it is impossible to know the exact cycles after fixing a false sharing instance, we can estimate based on our two observations as follows. 
+
+Assuming we have collected the following information, 
+\begin{itemize}
+\item $Cycles\_O$: total cycles of accesses on a falsely shared object $O$.
+\item $Accesses\_O$: the number of accesses on the object $O$.  
+\item $AverageCycles\_{nofs}$: the average cycles of every memory access on non-FS objects. 
+\end{itemize}
+
+then we can utilize $Accesses\_O$ to represent $RT_{actual}$, while  $RT_{predict}$ can be represented by the product of $Accesses\_O$ and $AverageCycles\_{nofs}$. Based on the equation EQ.(\ref{eq:improvement}), we can easily compute the potential performance improvement by fixing this false sharing instance. 
+
+
+
+
+then we can compute the potential performance improvement using EQ.(\ref{eq:improvement}). 
+
+
+
+
+
+To access the performance improvement of fixing a false sharing instance, we want to compute how much performance improvement by fixing the false sharing problems inside. Since we already observe 
+
+\cheetah{} first collects the number of accesses and cycles on each cache line, each object and each thread. Then it tries to compute the p
+
+ Thus, we can predict how the execution time will change. 
+
+For those cycles of non-fs objects, we simply uses the average number of cycles for accesses on serial phases. 
+
+% How to predict the runtime after fixing false sharing. We are 
+% using the cycles of non-fs objects and fs-objects. 
+% the number of accesses, and the total number of cycles of fs objects. 
+
+But it is very difficult to compute the potential performance improvement for cases with nested thread creations. Thus, we only focus on the normal fork-join model in this paper, which is the most widely used model. All applications that we evaluated in this paper, including all benchmarks in phoenix and parsec benchmarks suite, utilizes this fork-join model. 
+
+
+For example, if we captures 300 accesses on falsely-shared objects, while the whole thread 
+$RT_{predict}$ 
+
+{\bf The basic idea of prediction is to compute the performance improvement if the actual cycles of every memory access on a
+falsely-shared object are replaced by the average cycles of every memory access without false sharing}. Since fixing one false sharing may affect the latency on other memory addresses, \cheetah{} further assumes that the latency of other memory accesses are intact. \cheetah{} will compute the performance improvement based on EQ.(\ref{eq:improvement}), where runtime is denoted by $RT$.
+\begin{equation}
+\label{eq:improvement}
+Perf_{improve}=RT_{actual}/RT_{predict}
+\end{equation}
+
+
+In reality, \Cheetah{} presents a upper bound on the performance improvement percentage, but not an absolute value of time saving.
+
+
+\section{others}
 
 To prove its concept, \cheetah{} currently predicts the performance impact for programs with simple fork-join models, shown as Figure~\ref{fig:forkjoinmodel}. 
 The fork-join model is the most important and popular model in multithreading applications, as evidenced by all evaluated applications in this paper. 
@@ -18,10 +92,10 @@ The fork-join model is the most important and popular model in multithreading ap
 
 %\cheetah{} collects the execution information on different phases, different threads, and different objects. 
 
-This section will present the details of \cheetah{}'s prediction. Let's describe the general idea using the Figure~\ref{fig:forkjoinmodel} as an example. In this example, only thread $T1$ and $T2$ are involved in a falsely-shared object $O$, \cheetah{} has to know the following information:
+This section will present the details of \cheetah{}'s prediction. We first describe the general idea using the Figure~\ref{fig:forkjoinmodel} as an example. In this example, only thread $T1$ and $T2$ are involved in a falsely-shared object $O$, \cheetah{} has to know the following information:
 
 \begin{itemize}
-\item $Cycles\_O$: cycles of accesses on the object $O$.
+\item $Cycles\_O$: total cycles of accesses on the object $O$.
 \item $Accesses\_O$: the number of accesses on the object $O$.  
 \item $Cycles\_{nofs}$: average cycles of every memory access on non-FS objects. 
 \item The execution time of different threads.  
