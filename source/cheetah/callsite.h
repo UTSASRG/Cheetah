@@ -32,6 +32,60 @@
 #include <setjmp.h>
 #include <execinfo.h>
 
+extern "C" {
+/* Define the stack_frame layout */
+struct stack_frame {
+  struct stack_frame * prev;/* pointing to previous stack_frame */
+  long   caller_address;/* the address of caller */
+};
+
+/* pointing to the stack_bottom from libc */
+extern void * __libc_stack_end;
+
+static int back_trace(long stacks[ ], int size)
+{
+  void * stack_top;/* pointing to current API stack top */
+  struct stack_frame * current_frame;
+  int    i, found = 0;
+
+  /* get current stack-frame */
+  current_frame = (struct stack_frame*)(__builtin_frame_address(0));
+  
+  stack_top = &stack_top;/* pointing to curent API's stack-top */
+  
+  /* Omit current stack-frame due to calling current API 'back_trace' itself */
+  for (i = 0; i < 1; i++) {
+    if (((void*)current_frame < stack_top) || ((void*)current_frame > __libc_stack_end)) break;
+    current_frame = current_frame->prev;
+  }
+  
+  /* As we pointing to chains-beginning of real-callers, let's collect all stuff... */
+  for (i = 0; i < size; i++) {
+    /* Stop in case we hit the back-stack information */
+    if (((void*)current_frame < stack_top) || ((void*)current_frame > __libc_stack_end)) break;
+    /* omit some weird caller's stack-frame info * if hits. Avoid dead-loop */
+    if ((current_frame->caller_address == 0) || (current_frame == current_frame->prev)) break;
+    /* make sure the stack_frame is aligned? */
+    if (((unsigned long)current_frame) & 0x01) break;
+
+    /* Ok, we can collect the guys right now... */
+    stacks[found++] = current_frame->caller_address;
+		fprintf(stderr, "i %d current_frame %lx\n", i, current_frame->caller_address);
+    /* move to previous stack-frame */
+    current_frame = current_frame->prev;
+
+  }
+
+  /* omit the stack-frame before main, like API __libc_start_main */
+  if (found > 1) found--;
+
+  stacks[found] = 0;/* fill up the ending */
+
+  return found;
+}
+};
+
+
 class CallSite {
 public:
   CallSite() {
@@ -60,8 +114,9 @@ public:
     printf("\n");
   }
 
+
   void fetch(void) {
-    void * array[10];
+    long array[10];
     int size;
     int log = 0;
 
@@ -69,7 +124,7 @@ public:
     if(!isBacktrace) {
       isBacktrace = true;
       // get void*'s for all entries on the stack
-      size = backtrace(array, 11);
+      size = back_trace(array, 11);
       isBacktrace = false;
    
       for(int i = 0; i < size; i++) {
