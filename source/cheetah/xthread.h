@@ -278,7 +278,7 @@ public:
 
 		int index = current->childBeginIndex;
 
-		fprintf(stderr, "current index %d  childrange %d to %d\n", current->index, current->childBeginIndex, current->childEndIndex);
+		//fprintf(stderr, "current index %d  childrange %d to %d\n", current->index, current->childBeginIndex, current->childEndIndex);
 
 		while(true) {
 			thisThread = &_threads[index];
@@ -332,7 +332,7 @@ public:
     current->self = pthread_self();
 		current->tid = gettid();
 
-		fprintf(stderr, "CHILD:tid %d currentself %lx index %d\n", current->tid,current->self, current->index);
+		//fprintf(stderr, "CHILD:tid %d currentself %lx index %d\n", current->tid,current->self, current->index);
     // from the TLS storage.
     result = current->startRoutine(current->startArg);
 
