@@ -107,7 +107,7 @@ After this threshold is reached, \Cheetah{} will track detailed read/write infor
 % How we 
 \label{sec:report}
 
-\Cheetah{} aims to report false sharing correctly and precisely, same as existing work~\cite{sheriff, Predator}. \Cheetah{} will invoke the process of checking and reporting false sharing problems, either at the end of programs or receiving the instructions from users through the \texttt{SIGUSR2} signal.  
+\Cheetah{} aims to report false sharing correctly and precisely, same as existing work~\cite{Sheriff, Predator}. \Cheetah{} will invoke the process of checking and reporting false sharing problems, either at the end of programs or receiving the instructions from users through the \texttt{SIGUSR2} signal.  
 
 \paragraph{Correct Detection} \Cheetah{} keeps track of word-based (four bytes) memory accesses on susceptible cache lines: how many reads or writes occurs by which thread on each word. When more than one thread access a word, \Cheetah{} marks this word to be shared. By identifying accesses on each word on a susceptible cache line, we can easily differentiate false sharing from true sharing, as shown in Figure~\ref{fig:falsesharing}. Word-based information can also help diagnose false sharing problems in more detail, which helps programmers to decide how to padding an existing data structure in order to avoid false sharing. Because it is possible for a thread, particularly the main thread, to allocate an object and do some initialization before passing to different threads,  \cheetah{} only tracks the information of memory accesses inside parallel phases to avoid this problem.
 
