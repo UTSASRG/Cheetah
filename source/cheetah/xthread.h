@@ -278,6 +278,8 @@ public:
 
 		int index = current->childBeginIndex;
 
+		fprintf(stderr, "current index %d  childrange %d to %d\n", current->index, current->childBeginIndex, current->childEndIndex);
+
 		while(true) {
 			thisThread = &_threads[index];
 
@@ -285,7 +287,6 @@ public:
 
 			// We find the child
 			if(thisThread->self == thread) {
-				current->childBeginIndex = index;
 				break;
 			}
 			else {
@@ -293,7 +294,7 @@ public:
 					continue;
 				}
 				else {
-					printf("Can't find the thread_t structure with specifid thread\n");
+					printf("Can't find the thread_t structure with a specifid thread %lx\n", thread);
 					abort();
 				}
 			}	
@@ -304,7 +305,6 @@ public:
 
 	int thread_join(pthread_t thread, void **retval)  {
 		int ret;
-
 		
 		ret = WRAP(pthread_join(thread, retval));
 
@@ -332,7 +332,7 @@ public:
     current->self = pthread_self();
 		current->tid = gettid();
 
-//		fprintf(stderr, "CHILD:tid %d index %d\n", current->tid, current->index);
+		fprintf(stderr, "CHILD:tid %d currentself %lx index %d\n", current->tid,current->self, current->index);
     // from the TLS storage.
     result = current->startRoutine(current->startArg);
 
