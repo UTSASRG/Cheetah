@@ -70,7 +70,7 @@ static int back_trace(long stacks[ ], int size)
 
     /* Ok, we can collect the guys right now... */
     stacks[found++] = current_frame->caller_address;
-		fprintf(stderr, "i %d current_frame %lx\n", i, current_frame->caller_address);
+//		fprintf(stderr, "i %d current_frame %lx\n", i, current_frame->caller_address);
     /* move to previous stack-frame */
     current_frame = current_frame->prev;
 
