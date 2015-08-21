@@ -4,7 +4,7 @@
 
 In this section, we introduce the background knowledge of false sharing 
 %of cache lines in the memory hierarchy 
-and motivate the necessity of a lightweight detection in multithreaded programs.
+and motivate the necessity of a lightweight tool to detect and quantify its impact in program execution. Finally, we overview \cheetah{} and propose our approaches.
 
 \subsection{Background of False Sharing}
 \label{sec:background}
@@ -37,12 +37,22 @@ Thus, mostly people are still using the first two approaches to fix false sharin
 
 \sloppy
 \subsection{Motivation of Efficient Memory Trace Collection}
-Analyzing memory access patterns is an effective method to pinpoint false sharing. However, capturing memory accesses of software is costly, even with various sampling techniques~\cite{}. The overhead can as high as 2-5$\times$, which is often not applicable to real applications working on large data sets and running in a highly threaded platform. Moreover, the high overhead leads to inaccurate measurement of program execution, which inconveniences the assessment of optimization potentials.
+Analyzing memory access patterns is an effective way to pinpoint false sharing. However, capturing memory accesses via software methods is costly, even with various sampling techniques~\cite{macpo,SLO2}. The overhead can be as high as 2-5$\times$, which is often not applicable to real applications working on large data sets and running in a highly threaded platform. Moreover, the high overhead leads to inaccurate measurement of program execution, which inconveniences the impact assessment of performance bottlenecks.
 
-To address this issue, recent hardware performance monitoring units (PMU) support sampling memory accesses with extremely low overhead, less than 5\%. There are two typical sampling mechanisms in modern architectures: instruction-based sampling (IBS)~\cite{} supported in AMD Opteron processors and precise event-based sampling (PEBS)~\cite{} in Intel Sandy Bridge processors as well as their successors. Both IBS and PEBS can sparsely sample memory loads and stores at the same time. For each load sample, IBS and PEBS capture its effective address and the latency in cycles for fetching the data. For each store sample, IBS and PEBS capture its effective address only. Moreover, both IBS and PEBS record the precise instruction pointers of sampled memory accesses, which can be used to associate the analysis with program's source code. To make our analysis efficient, we build our tool based on PMU sampling. 
+To address this issue, recent hardware performance monitoring units (PMU) support sampling memory accesses with extremely low overhead, less than 5\%. There are two typical sampling mechanisms in modern architectures: instruction-based sampling (IBS)~\cite{AMDIBS:07} supported in AMD Opteron processors and precise event-based sampling (PEBS) with load latency extension~\cite{IntelArch:PEBS:Sept09} in Intel Nehalem processors as well as their successors. Both IBS and PEBS can sparsely sample memory loads and stores at the same time. For each load sample, IBS and PEBS capture its effective address and the latency in CPU cycles from this sampled instruction issued to retired. For each store sample, IBS and PEBS capture its effective address only. Moreover, both IBS and PEBS record the precise instruction pointers of sampled memory accesses, which can be used to associate the analysis with program's source code. To make our analysis efficient, we build \Cheetah{} based on PMU sampling. 
 
- 
-%\cheetah{} only reports those false sharing problems that can have a significant impact on the performance by predicting the upper bound of performance improvement, according to the idea that are discussed in Section~\ref{sec:predictidea}.  It will rank the severity of performance degradation of any detected false sharing problems based on the predicted performance improvement after fixes.
+ \subsection{Overview of Cheetah}
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{figure/workflow}
+\caption{The workflow of \cheetah{}}
+\label{fig:workflow}
+\end{figure}
+
+\Cheetah{}, as shown in Figure~\ref{fig:workflow}, consists of two components: an online profiler and an offline analyzer. The online profiler leverages PMU to monitor program execution and the offline analyzer processes all performance data collected by the profiler. Finally, \cheetah{} generates a report to guidance programmers for code optimization. 
+To distinguish \cheetah{} from existing tools, we claim that \cheetah{} can detect false sharing efficiently and effectively. For its efficiency, \cheetah{} incurs low runtime overhead, around 10\%, which is much lower than the state-of-the-art tool, such as Predator~\cite{Predator}. For its effectiveness, \cheetah{} precisely identifies false sharing, without reporting any true sharing. Moreover, it provides detailed optimization guidance, including source code information, data object information, and assessment of improvement potentials.
+
+In the following two sections, we elaborate how \cheetah{} efficiently detects false sharing and assesses its impact to the whole program execution.
 
 
