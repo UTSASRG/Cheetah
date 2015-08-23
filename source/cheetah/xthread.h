@@ -119,6 +119,14 @@ public:
     // Get corresponding thread_t structure.
     current->self  = pthread_self();
     current->tid  = gettid();
+
+		// Seting up the affinity for the first thread
+		cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+
+    CPU_SET(tindex%xdefines::HARDWARE_CORES_NUM, &cpuset);
+
+    pthread_setaffinity_np(current->self, sizeof(cpu_set_t), &cpuset);
   }
 
   thread_t * getThreadInfoByIndex(int index) {
