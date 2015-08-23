@@ -194,6 +194,7 @@ class xdefines {
 public:
 	// FIXME: change it in order to evaluate the performance in a stable way 
 	enum { HARDWARE_CORES_NUM = 48 };
+//	enum { HARDWARE_CORES_NUM = 48 };
   enum { STACK_SIZE = 1024 * 1024 };
   enum { PHEAP_CHUNK = 1048576 };
 
