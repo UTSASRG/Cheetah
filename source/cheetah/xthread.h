@@ -269,7 +269,16 @@ public:
 
     result =  WRAP(pthread_create)(tid, attr, startThread, (void *)children);
 		
+		// Setting up the core affinity
+		if(result == 0) {
+			cpu_set_t cpuset;
+   		CPU_ZERO(&cpuset);
 
+			CPU_SET(tindex%xdefines::HARDWARE_CORES_NUM, &cpuset);
+
+			// Seting up the affinity
+			pthread_setaffinity_np(*tid, sizeof(cpu_set_t), &cpuset);
+		}
     return result;
   }      
 
