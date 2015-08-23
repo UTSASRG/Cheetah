@@ -7,7 +7,8 @@ INCLUDE_DIR = .
 SRCS_IBS= $(SOURCE_DIR)/IBS/ibsop.c  
 SRCS =  $(SOURCE_DIR)/libdefault.cpp \
 	$(SOURCE_DIR)/libfuncs.cpp         \
-	$(SOURCE_DIR)/finetime.c   \
+	$(SOURCE_DIR)/finetime.c   
+#\
 	$(SRCS_IBS)  
 
 INCS =  $(INCLUDE_DIR)/xdefines.h     \
@@ -30,7 +31,7 @@ INCS =  $(INCLUDE_DIR)/xdefines.h     \
 
 DEPS = $(SRCS) $(INCS)
 
-CXX = g++ -g -O0 -I$(INCLUDE_DIR) -I$(INCLUDE_DIR)/detect -I$(INCLUDE_DIR)/heap -I$(INCLUDE_DIR)/util -I$(INCLUDE_DIR)/sync
+CXX = g++ -g -O2 -I$(INCLUDE_DIR) -I$(INCLUDE_DIR)/detect -I$(INCLUDE_DIR)/heap -I$(INCLUDE_DIR)/util -I$(INCLUDE_DIR)/sync
 
 # Detection on 32bit
 # CXX = g++ -DSSE_SUPPORT -m32 -DX86_32BIT -O3 -fno-omit-frame-pointer -DDETECT_FALSE_SHARING
@@ -42,7 +43,7 @@ CXX = g++ -g -O0 -I$(INCLUDE_DIR) -I$(INCLUDE_DIR)/detect -I$(INCLUDE_DIR)/heap 
 #CFLAGS   = -Wall -msse3 -DSSE_SUPPORT -fno-omit-frame-pointer
 #CFLAGS   = -fno-omit-frame-pointer -DPREDICTION
 #CFLAGS   = -Wno-unused-result -fno-omit-frame-pointer -DPREDICTION -DUSING_SIGUSR2
-CFLAGS   = -Wno-unused-result -fno-omit-frame-pointer -DUSING_IBS -DPREDICTION -DUSING_SIGUSR2
+CFLAGS   = -Wno-unused-result -fno-omit-frame-pointer -DPREDICTION -DUSING_SIGUSR2 -DUSE_BINDING
 #-DOUTPUT_WORD_ACCESSES
 #CFLAGS   = -fno-omit-frame-pointer -DPREDICTION -DOUTPUT_WORD_ACCESSES
 #-DIMPROVE_PERF 
