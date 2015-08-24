@@ -1,7 +1,7 @@
 \section{Evaluation}
 \label{sec:eval}
 
-We evaluate \cheetah{} on an AMD Opteron machine, which has 48 cores and 128 GB memory, each core with the 1.6 GHz frequency. We perform experiments on two well-known benchmark suites: Phoenix~\cite{} and Rodinia~\cite{}. These benchmarks cover popular threading models, such as pthread~\cite{} and OpenMP~\cite{}. Table~\ref{} shows the detailed description of each benchmark. We use gcc-4.6 to compile these benchmarks, with {\tt -O2} option. For Phoenix benchmarks, we run them using 16 threads because these benchmarks often have too small working set. For Rodinia benchmarks, we run them with 48 threads. Since \cheetah{} is based on the sampling technique, running with more threads will generally runs too fast. We need to run a benchmark at least 5 second to get enough statistical samples. \\
+We evaluate \cheetah{} on an AMD Opteron machine, which has 48 cores and 128 GB memory. The frequency of each core is 1.6 GHz. \todo{} . We performed experiments on two well-known benchmark suites: Phoenix~\cite{} and Rodinia~\cite{}. These benchmarks cover popular threading models, such as pthread~\cite{} and OpenMP~\cite{}. Table~\ref{} shows the detailed description of each benchmark. We use gcc-4.6 to compile these benchmarks, with {\tt -O2} option. For Phoenix benchmarks, we run them using 16 threads because these benchmarks often have too small working set. For Rodinia benchmarks, we run them with 48 threads. Since \cheetah{} is based on the sampling technique, running with more threads will generally runs too fast. We need to run a benchmark at least 5 second to get enough statistical samples. \\
 
 \sloppy{}
 Our evaluation will answer the following questions in order as follows. 
