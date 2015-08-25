@@ -26,12 +26,36 @@ With applying both of these assumptions, \cheetah{} can identify cache validatio
 {\color{red}\Cheetah{} is a library that can be preloaded (using \texttt{LD\_PRELOAD} or can be linked to: there is no need to change or recompile the programs, or to modify the underlying operating system. } {\color{blue} Do you want to put this sentence here?}
 %This idea is very similar to Predator~\cite{Predator}. \Cheetah{} will rely on hardware-performance counters to reduce performance overhead of detection, instead of a instrumentation-based approach~\cite{Predator}. 
 
- 
+In the remaining of this section, we elaborate how we install PMU-based sampling mechanism for memory accesses in Section~\ref{sec:perfcounter}, how we track memory accesses and data allocation in Section~\ref{sec:shadow}, how we analyze access patterns for cache invalidation in Section~\ref{sec:computeinvalidations}, and how we report false sharing in Section~\ref{sec:report}.
 % This idea is similar to Predator. But Predator is a compiler-based approach, which needs to change the source code of applications. Also, it introduces much performance overhead that can block its use in deployment environment. 
 
 % To reduce the performance overhead, 
 % Basic idea, by examing the memory access pattern
-\subsection{Shadow Memory and Custom Heap}
+
+\subsection{Memory Accesses Sampling}
+\label{sec:perfcounter}
+
+According to the basic rule described above, it is very important to track memory accesses of different threads in order to compute the number of cache invalidations on each cache line. 
+%The state-of-the-art work \Predator{} leverages the compiler instrumentation to insert function calls before every memory access~\cite{Predator}. However, this approach introduces more than $5\times$ performance overhead by instrumenting every memory access. Moreover, \Predator{} has to re-compile applications, which needs the availability of source code. \Predator{} is not desirable for legacy applications without the source code, or real deployment that is sensitive to performance. 
+\cheetah{} aims to significantly reduce the performance overhead by leveraging PMU-based sampling (i.e., AMD IBS and Intel PEBS), described in Section~\ref{sec:sampling}.
+%hardware performance monitoring units (PMUs) that are available in most modern architectures. 
+For each sample, PMU distinguishes whether it is a memory read or write, captures the memory address touched by the sampled memory access, and record the thread ID that triggers this sample. \Cheetah{} performs the analysis of false sharing based on these three pieces of information.3
+%These information is enough to compute the number of cache invalidations based on the basic rule that is described in Section~\ref{sec:basicidea}. 
+Since hardware performance counter only samples a memory access out of a specified number, it doesn't pose significant performance overhead. 
+%Besides that, using performance counters does not need to instrument source code explicitly, thus providing a non-intrusive way to monitor memory references. 
+
+{\color{blue}Do you want to put this section in the related work?}
+\cheetah{} is different with existing approaches using hardware performance counters to detect false sharing problems~\cite{mldetect, openmp, detect:ptu}. Jayasena et. al. collects different types of events like memory accesses, data caches, TLBs, interactions among cores, and resources stalls, and derives potential memory patterns that can cause false sharing~\cite{mldetect}. DARWIN collects cache coherence events at the first round, then identifies possible memory accesses on those data structures that are involved in frequent cache invalidations for the second round~\cite{openmp}. DARWIN also requires manual effort or expertise to verify whether false sharing occurs or not.  Intel's PTU also relies on memory sampling mechanism but can not differentiate false sharing and true sharing since it discards the temporal information of memory accesses~\cite{detect:ptu}. More details on the difference have been discussed in Section~\ref{sec:relatedwork}.
+
+\paragraph{Implementation} 
+\cheetah{} intercepts process and thread creation by preloading its profiling library into the application address space without source code modification. Before executing any process or thread, \cheetah{} programs the PMU registers to turn on sampling with a pre-defined threshold. \cheetah{} also installs a signal handler to capture the sample in the form of interrupt signals in the user space. In order to guarantee the thread that triggers the interrupts can also captures them in the handler, 
+%In order to sample memory accesses, \cheetah{} has to setup hardware registers before entering the \texttt{main} routine of the application.  \Cheetah{} installs a signal handler so that it can collect detailed information of memory accesses after a specified sample period. In order to simplify the signal handling, \Cheetah{} also configures the signal handler to be responded by the current thread, 
+\cheetah{} sets \texttt{F\_SETOWN\_EX} flag when using \texttt{fcntl} function to bind signals with threads. \cheetah{} also sets up the custom allocator and its internal heap in the initialization.
+
+Inside the signal handler, \Cheetah{} collects detailed information of every sampled memory access, including its memory address, thread id, read or write operation, and access latency, which can be fed into the computing module to compute the number of cache invalidations and the prediction module to predict performance impact.
+
+\subsection{Shadow Memory and Customized Heap}
+\label{sec:shadow}
 
 For each sampled memory access, \cheetah{} has to locate its specific cache line so that we can compute the number of cache invalidations. \Cheetah{} utilizes the shadow memory mechanism to speedup the locating process. Shadow memory has been utilized extensively in different fields, such as detecting concurrency bugs~\cite{Harrow:2000:RCM:645880.672080, helgrind, 404681, Savage:1997:EDD:268998.266641}, tracking information flow or data flow~\cite{Cheng:2006:TEF:1157733.1157903, Newsome05dynamictaint, Qin:2006:LLP:1194816.1194834}, or detecting memory errors or others~\cite{qinzhao, Hastings91purify:fast, Seward:2005:UVD:1247360.1247362, Narayanasamy:2006:ALO:1140277.1140303}.  
 
@@ -44,23 +68,6 @@ To use its custom heap, \cheetah{} intercepts all memory allocations and dealloc
 %heap and globals. 
 %Two huge arrays. 
 \cheetah{} keeps track of memory accesses of global variables and objects of the application heap using the shadow memory technique. \Cheetah{} allocates two large arrays (by using \texttt{mmap}) to keeping track of the number of writes and detailed access information on each cache line. For each memory address, \cheetah{} uses the bit shift to compute the index of cache line and locates the placement of its corresponding array quickly. 
-
-\subsection{Sampling Memory Accesses}
-\label{sec:perfcounter}
-
-According to the basic rule described above, it is very important to track memory accesses of different threads in order to compute the number of cache invalidations on each cache line. 
-
-The previous work \Predator{} leverages the compiler instrumentation to insert function calls before every memory access~\cite{Predator}. However, this approach introduces more than $5\times$ performance overhead by instrumenting every memory access. More than that, \Predator{} has to re-compile applications, which needs the availability of source code. \Predator{} is not desirable for legacy applications without the source code, or real deployment that is sensitive to performance. 
-
-\cheetah{} aims to significantly reduce the performance overhead by leveraging hardware performance counters that are available on most modern hardware. Hardware performance counters provide sampling-based memory access information about how the hardware is being exercised by a program, such as read/write operations, memory addresses, and threads~\cite{Mucci99papi}. These information is enough to compute the number of cache invalidations based on the basic rule that is described in Section~\ref{sec:basicidea}. Since hardware performance counter only samples a memory access out of a specified number, it doesn't pose significant performance overhead. 
-Besides that, using performance counters does not need to instrument source code explicitly, thus providing a non-intrusive way to monitor memory references. 
-
-\cheetah{} is different with existing approaches using hardware performance counters to detect false sharing problems~\cite{mldetect, openmp, detect:ptu}. Jayasena et. al. collects different types of events like memory accesses, data caches, TLBs, interactions among cores, and resources stalls, and derives potential memory patterns that can cause false sharing~\cite{mldetect}. DARWIN collects cache coherence events at the first round, then identifies possible memory accesses on those data structures that are involved in frequent cache invalidations for the second round~\cite{openmp}. DARWIN also requires manual effort or expertise to verify whether false sharing occurs or not.  Intel's PTU also relies on memory sampling mechanism but can not differentiate false sharing and true sharing since it discards the temporal information of memory accesses~\cite{detect:ptu}. More details on the difference have been discussed in Section~\ref{sec:relatedwork}.
-
-\paragraph{Implementation} 
-In order to sample memory accesses, \cheetah{} has to setup hardware registers before entering the \texttt{main} routine of the application.  \Cheetah{} installs a signal handler so that it can collect detailed information of memory accesses after a specified sample period. In order to simplify the signal handling, \Cheetah{} also configures the signal handler to be responded by the current thread, by calling \texttt{fcntl} function with \texttt{F\_SETOWN\_EX} flag. \cheetah{} also sets up the custom allocator and its internal heap in the initialization.
-
-Inside the signal handler, \Cheetah{} collects detailed information of every sampled memory access, including its memory address, thread id, read or write operation, and access latency, which can be fed into the computing module to compute the number of cache invalidations and the prediction module to predict performance impact.
 
 
 \subsection{Computing Cache Invalidations}
