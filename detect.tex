@@ -2,24 +2,28 @@
 \label{sec:detect}
 
 % What is the basic idea? Why those ones uses performance counters can not reveal false sharing problems? 
-\cheetah{} aims to report false sharing problems having significant performance impact, where a large number of cache invalidations occur on those cache lines. However, it is not easy to know whether a cache line is invalidated or not, without the complete information of cache hierarchy and different threads' running situation. 
-
-\cheetah{} avoids knowing these information and computes the number of cache invalidations according to a basic rule: {\it \bf if a thread writes a cache line after other threads have accessed the same cache line, this write operation causes a cache invalidation}. To make it true, \cheetah{} further makes the following \textbf{two basic assumptions}.
-
+\cheetah{} aims to report false sharing that has a significant performance impact to the whole program execution, that is, a large number of cache invalidations occur in cache lines. Though hardware performance counters can collect events related to the cache invalidation, they have difficulties in identifying its root causes, such as instructions and data objects involved in the cache invalidation. In contrast, directly analyzing the memory traces collected by PMU can give more insights. Given a set of memory addresses, one typically needs the configuration of cache hierarchy and the knowledge of thread-to-core mappings to perform accurate analysis. 
+\cheetah{}, designed to be independent from architectures and runtime environments, detect cache invalidations based on a rule: \emph{If a thread writes a cache line after other threads have accessed the same cache line, this write operation causes a cache invalidation}. To match the rule with the practice, \cheetah{} further makes the following two assumptions:
 \begin{itemize} 
-\item {\bf Assumption 1:} Each thread runs on a separate core with its own cache. 
+\item {\bf Assumption 1:} Each thread runs on a separate core with its own private cache. 
 
-\item {\bf Assumption 2: } The sizes of caches are infinite. 
+\item {\bf Assumption 2: } Cache sizes are infinite. 
  
 \end{itemize}
 
-Assumption 1 is a reasonable assumption since different threads can run on a separate core, even if they may not in a given execution. If multiple threads are actually running on the same core, false sharing problems may cause less performance penalty. In this meaning, assumption 1 actually presents the worst scenario for a given false sharing. This assumption provides the following benefits: there is no need to know the actual situation where a thread is running by assuming different threads are running on different cores; there is no need to know actual cache hierarchy by assuming different cores having their own cache (at least L1). 
+Assumption 1 is reasonable because thread over-subscription is rare for computation intensive programs. Moreover, given different architectures and operating systems, threads may be scheduled to different cores. Thus, even in one execution, threads are scheduled to the same core, we still need to conservatively assume that they can run on different cores during different executions.
+%If multiple threads are actually running on the same core, false sharing problems may cause less performance penalty. 
+To this end, Assumption 1 actually presents the worst scenario for a given false sharing. 
+With this assumption, \cheetah{} is independent from thread-to-core mapping.
+%does not need to know the actual situation where a thread is running by assuming different threads are running on different cores; there is no need to know actual cache hierarchy by assuming different cores having their own cache (at least L1). 
 
-Assumption 2 further assumes that the sizes of caches are infinite. If there is a memory access within a cache line, the hardware cache (of running this thread) always holds the data until an access of other threads (running on other cores by assumption 1) invalidates it. Thus, there is no need to track cache evictions that are caused by cache capacity. 
+Assumption 2 conservatively assumes that every access can be a hit to the cache. Only both reads and writes to the data in the cache, cache invalidation may occur. Otherwise, if the data is in main memory, accessing it does not incur any cache invalidation. This assumption prevents \cheetah{} from depending on the cache capacity and also assumes the worst scenario, like Assumption 1.
+%However, 
+%If there is a memory access within a cache line, the hardware cache (of running this thread) always holds the data until an access of other threads (running on other cores by assumption 1) invalidates it. Thus, there is no need to track cache evictions that are caused by cache capacity. 
 
-Combining with these two assumptions, \cheetah{} can practically compute the number of cache validations simply by checking the pattern of memory accesses without knowing the actual running condition of different threads or cache hierarchy: if a memory access of a thread will load this cache line on its own cache (assumption 1), then only a write from a different thread can invalidate this cache line. Thus, we can report the number of cache validations by only observing the memory access pattern, similar to previous work~\cite{Predator, qinzhao}. 
+With applying both of these assumptions, \cheetah{} can identify cache validations by simply checking memory accesses patterns without knowing the actual memory hierarchy and parallel execution environments: if a memory access of a thread will load a cache line into its own private cache (assumption 1), only a write from a different thread can invalidate this cache line. Thus, we can report the number of cache validations by analyzing memory traces only, similar to the previous work~\cite{Predator, qinzhao}. 
 
-\Cheetah{} is a library that can be preloaded (using \texttt{LD\_PRELOAD} or can be linked to: there is no need to change or recompile the programs, or to modify the underlying operating system. 
+{\color{red}\Cheetah{} is a library that can be preloaded (using \texttt{LD\_PRELOAD} or can be linked to: there is no need to change or recompile the programs, or to modify the underlying operating system. } {\color{blue} Do you want to put this sentence here?}
 %This idea is very similar to Predator~\cite{Predator}. \Cheetah{} will rely on hardware-performance counters to reduce performance overhead of detection, instead of a instrumentation-based approach~\cite{Predator}. 
 
  
