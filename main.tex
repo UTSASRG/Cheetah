@@ -26,7 +26,7 @@
 
 % \documentclass{acm_proc_article-sp}
 
-\documentclass{sig-alternate}
+\documentclass[10pt]{sigplanconf}
 
 \date{} % \vspace*{-0.2in}}
 
@@ -164,6 +164,14 @@
 \definecolor{Gray}{cmyk}{0,0,0,0.5}
 
 \begin{document}
+\special{papersize=8.5in,11in}
+\setlength{\pdfpageheight}{\paperheight}
+\setlength{\pdfpagewidth}{\paperwidth}
+
+\conferenceinfo{CGO 2016}{Month d--d, 20yy, City, ST, Country} 
+\copyrightyear{2016} 
+\copyrightdata{978-1-nnnn-nnnn-n/yy/mm} 
+\doi{nnnnnnn.nnnnnnn}
 
 %\CopyrightYear{2015}
 %\copyrightdata{XXX-X-XXXXX-XXX-X/XX/XX}
@@ -171,7 +179,7 @@
 \title{{\huge \bf \Cheetah{}}: Detecting False Sharing \\ Efficiently and Effectively}
 
 %\begin{comment}
-%\authorinfo{XXXXX}
+\authorinfo{Double blind review}{}{}
 
 %\authorinfo{Tongping~Liu \and Emery~D.~Berger}
 %{School of Computer Science \\
