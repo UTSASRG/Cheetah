@@ -80,8 +80,7 @@ for (i = 0; i < args->num_elems; i++)
 \subsubsection{streamcluster}
 
 %Figure~\ref{fig:sc} shows the output of StreamCluster. 
-streamcluster 
-StreamcIt identifies one false sharing. Correlating back to the source code, we find that ..
+Inside the streamcluster, every thread will update the work\_mem object concurrently, located in line 985. The authors have already added some padding to this object. However, the size of cache line (as a macro) is set to be 32 bytes, which is smaller than the size of actual cache line used in our experimental machine. Thus, streamcluster still exposes significant false sharing problems. The performance impact of fixing false sharing problems is further discussed in Section~\ref{sec:precision}. 
 
 
 \subsubsection{Comparing with state-of-the-art}
