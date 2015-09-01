@@ -44,25 +44,20 @@ extern void * __libc_stack_end;
 
 static int back_trace(long stacks[ ], int size)
 {
-  void * stack_top;/* pointing to current API stack top */
   struct stack_frame * current_frame;
+  void * stack_top;/* pointing to current API stack top */
   int    i, found = 0;
+
+  /* figue out current stack location.. */
+  stack_top = &stack_top;
 
   /* get current stack-frame */
   current_frame = (struct stack_frame*)(__builtin_frame_address(0));
-  
-  stack_top = &stack_top;/* pointing to curent API's stack-top */
-  
-  /* Omit current stack-frame due to calling current API 'back_trace' itself */
-  for (i = 0; i < 1; i++) {
-    if (((void*)current_frame < stack_top) || ((void*)current_frame > __libc_stack_end)) break;
-    current_frame = current_frame->prev;
-  }
-  
+
   /* As we pointing to chains-beginning of real-callers, let's collect all stuff... */
   for (i = 0; i < size; i++) {
     /* Stop in case we hit the back-stack information */
-    if (((void*)current_frame < stack_top) || ((void*)current_frame > __libc_stack_end)) break;
+    if (!current_frame || ((void*)current_frame < stack_top) || ((void*)current_frame > __libc_stack_end)) break;
     /* omit some weird caller's stack-frame info * if hits. Avoid dead-loop */
     if ((current_frame->caller_address == 0) || (current_frame == current_frame->prev)) break;
     /* make sure the stack_frame is aligned? */
@@ -124,12 +119,13 @@ public:
     if(!isBacktrace) {
       isBacktrace = true;
       // get void*'s for all entries on the stack
+     // size = backtrace((void **)array, 11);
       size = back_trace(array, 11);
       isBacktrace = false;
    
       for(int i = 0; i < size; i++) {
         unsigned long addr = (unsigned long)array[i];
-        //fprintf(stderr, "textStart %lx textEnd %lx addr %lx at log %d\n", textStart, textEnd, addr, log);
+//        fprintf(stderr, "textStart %lx textEnd %lx addr %lx at log %d\n", textStart, textEnd, addr, i);
         if(addr >= textStart && addr <= textEnd) {
           _callsite[log++] = addr;
           if(log == CALL_SITE_DEPTH) {
