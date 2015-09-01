@@ -38,7 +38,7 @@ extern "C" {
       // Seting up the affinity
       pthread_setaffinity_np(*tid, sizeof(cpu_set_t), &cpuset);
     }
-
+		return result;
   }
 };
 
