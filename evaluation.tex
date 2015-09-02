@@ -80,7 +80,7 @@ for (i = 0; i < args->num_elems; i++)
 \subsubsection{streamcluster}
 
 %Figure~\ref{fig:sc} shows the output of StreamCluster. 
-Inside the streamcluster, every thread will update the work\_mem object concurrently, located in line 985. The authors have already added some padding to this object. However, the size of cache line (as a macro) is set to be 32 bytes, which is smaller than the size of actual cache line used in our experimental machine. Thus, streamcluster still exposes significant false sharing problems. The performance impact of fixing false sharing problems is further discussed in Section~\ref{sec:precision}. 
+Inside the streamcluster, every thread will update the work\_mem heap object concurrently, located in line 985. The authors have already added some padding to avoid false sharing. However, the size of cache line (as a macro) is set to be 32 bytes, which is smaller than the size of actual cache line used in our experimental machine. Thus, streamcluster will has a significant false sharing problem. The performance impact of fixing false sharing problems inside is further discussed in Section~\ref{sec:precision}. 
 
 
 \subsubsection{Comparing with state-of-the-art}
@@ -93,9 +93,9 @@ Inside the streamcluster, every thread will update the work\_mem object concurre
 \end{figure}
 
 %\cheetah{} may miss some false sharing instances because of its sampling feature. 
-\cheetah{} can only detect false sharing problems that actually occur in the execution. As observed by Predator~\cite{Predator}, false sharing occurrences can be affected by the starting address of objects or the size of the cache line. \cheetah{} may also miss false sharing instances if the number of accesses on them is not significant enough, because of \cheetah{}'s sampling feature. In this section, we will compare \cheetah{}'s effectiveness with the state-of-the-art tool -- Predator~\cite{Predator}, which observes the largest number of false sharing instances. 
+\cheetah{} can only detect false sharing problems that actually occur in the execution. As observed by Predator~\cite{Predator}, the occurrence of false sharing can be affected by the starting address of objects or the size of the cache line. \cheetah{} may also miss false sharing instances if the number of accesses on them is not significant enough, because of \cheetah{}'s sampling feature. In this section, we will compare \cheetah{}'s effectiveness with the state-of-the-art tool -- Predator~\cite{Predator}, which observes the largest number of false sharing instances. 
 
-Comparing with Predator, \cheetah{} can not detect false sharing problems in the histogram, reverse\_index, and word\_count. We fixed false sharing problems inside based on Predator's detection and ran these applications on our hardware \todo{with XXX threads}, with and without false sharing problems. Figure~\ref{fig:fseffectiveness} shows the performance impact of fixing false sharing. Experimental results show that all these benchmarks do not show a significant speedup after fixes, with less than 0.1\% improvement.  
+Comparing with Predator, \cheetah{} can not detect false sharing problems in the histogram, reverse\_index, and word\_count. We fixed false sharing problems inside based on Predator's detection and ran these applications on our hardware \todo{with XXX threads}, with and without false sharing problems. Figure~\ref{fig:fseffectiveness} shows the performance impact of fixing false sharing: that all these benchmarks do not show a significant speedup after fixes, with less than 0.1\% improvement.  
 
 \subsection{Performance Overhead}
 \label{sec:perf}
@@ -103,15 +103,45 @@ Comparing with Predator, \cheetah{} can not detect false sharing problems in the
 \begin{figure*}[htbp]
 \centering
 \label{fig:overhead}
-\includegraphics[width=2\columnwidth]{figure/overhead}
-\caption{Runtime overhead incurred by \Cheetah{}. All Parsec benchmarks are run with 48 threads, while all Phoenix benchmarks are run with 16 threads. We exclude those benchmarks with small execution time. The time is averaged on three executions.}
+\includegraphics[width=2\columnwidth]{figure/Overhead.pdf}
+\caption{Runtime overhead of \Cheetah{}. We normalized the runtime to that of \pthreads{}. Averagely, \cheetah{} only introduces around 7\% performance overhead on all evaluated benchmarks, which makes it practical to be used in the deployed software. }
 \end{figure*}
 
+We show the runtime overhead of \cheetah{} in Figure~\ref{fig:overhead}. We evaluated all benchmarks for three times and shown the average results here. According to this figure, \cheetah{} only introduces around 7\% performance overhead, which makes it practical to be utilized in the real deployment. 
 
-For \cheetah{}, we configure with instruction-based sampling at a sampling period of 64K instructions (sample one instruction for every 64K instructions). Figure~\ref{} shows the runtime overhead incurred by \cheetah{}. From the figure, we can see that \cheetah{} incurs low runtime overhead, less than 3\% on average.
+We configure \cheetah{} with the sampling frequency at 64K instructions. Thus, for every 64K instructions, the pre-installed trap handler will be notified once so that \cheetah{} can collect the information of each sampled memory access. Because of \cheetah{}'s very coarse sampling rate, we should  let programs to run sufficiently long enough for our tool. If an application only runs less than 5 seconds, \cheetah{} can not gather enough data for the detection and assessment. Thus, we changed all phoenix benchmarks to only create 16 threads for each application, even the hardware has 48 cores.  We created 16 threads for Parsec benchmarks too, if arguments includes the number of threads. For other benchmarks, we used 48 threads. 
+
+The performance overhead of \cheetah{} mainly comes from the following aspects. 
+\paragraph{Sampling overhead.} When there is a sample, we have to collect information about this access, such as the type of access (read or write) and the number of cycles. We will update the history table of its corresponding cache line.
+
+\paragraph{Thread creation overhead.} For each thread creation, \cheetah{} will initialize thread related data structure, get the timestamp, and record phase related information. Thus, for an application with a large number of threads, such as kmeans, \cheetah{} introduces slightly more overhead. 
+
+ \todo{Should we check how the performance overhead will be changed at a different sample frequency?}
 
 \subsection{Assessment Precision}
 \label{sec:precision}
 
+Different with previous tools, \cheetah{} can assess the performance impact of false sharing problems so that programmers can focus only on important problems. This section evaluates the precision of assessment. 
+
+We evaluated the precision of assessment on two applications, \texttt{linear\_regression} and \texttt{streamcluster}, since they have been observed to have serious false sharing problems. We listed the results as Table~\ref{tbl: precision}. In this table, \texttt{linear\_regression} is abbreviated as ``linear\_rg''.  We evaluated different situations for these two cases, when the number of threads is equal to 16, 8, 4, and 2 correspondingly. We listed the predicted performance impact in the ``Assessment'' column and the actual improvement in the ``Real Case'' column of the table. 
+
+Results of Table~\ref{tbl: precision} show that \cheetah{} can perfectly assessment the performance impact of false sharing in every case. Relying on the assessment, programmers don't have to spend time on those in-significant false sharing problems any more. 
 
 
+\begin{table}
+  \small
+  \centering
+  \begin{tabular}{ c | c | c | c}
+  \textbf{Application} & {Threads (\#)} & \textbf{Assessment} & \textbf{Real Case} \\ \hline
+\texttt{linear\_re} & 16 & 6.44X    & 6.7X \\
+\texttt{linear\_re}& 8  & 5.56X    & 5.4X \\
+\texttt{linear\_re} & 4  & 3.86X  & 4.1X  \\
+ \texttt{linear\_re}& 2  & 2.18X  & 2X    \\ \hline
+ \texttt{streamcluster} & 16 & 1.016X    & 1.015X \\
+ \texttt{streamcluster} & 8 & 1.017X    & 1.018X \\
+ \texttt{streamcluster} & 4 & 1.024X    & 1.022X \\
+ \texttt{streamcluster} & 2 & 1.033X    & 1.035X \\
+\end{tabular}
+  \caption{
+    Precision of assessment. \label{tbl: precision}}
+\end{table}
