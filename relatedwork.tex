@@ -1,40 +1,51 @@
 \section{Related Work}
 
 \label{sec:relatedwork}
-In this section, we review existing lightweight techniques for identifying memory bottlenecks and the tools specifically focusing on analyzing false sharing issues.
 
-\subsection{Efficient Memory Analysis}
-Analyzing memory bottlenecks is well-known for its high overhead. Tools, such as SLO~\cite{SLO1}, Valgrind~\cite{Nethercote:2007:VFH:1250734.1250746}, and MemSpy~\cite{Martonosi92} can incur hundreds of times slowdowns to the program execution when monitoring every memory access. A few tools, such as MACPO~\cite{macpo}, selectively monitor memory accesses via software control, which still cause 3-5$\times$ overhead.
-
-Recently, tools based on PMU sampling techniques can identify memory bottlenecks with low overhead. 
-Itzkowitz et al.\ introduced memory profiling to Sun ONE Studio~\cite{DBLP:conf/sc/ItzkowitzWAK03}, which uses event-based sampling (EBS). 
-They apply this tool to collect and analyze memory accesses in a sequential program and report measurement data in flat profiles. However, EBS can cause inaccuracy in the measurement~\cite{AMDIBS:07}.
-Sun ONE Studio attempted to compensate for EBS's inaccuracy using a backtracking search.
-
-Buck and Hollingsworth developed Cache Scope~\cite{DBLP:conf/sc/BuckH04} to perform data-centric analysis using 
-Itanium2 event address registers (EAR).
-Cache Scope associates latency with data objects and functions that accessed them.
-
-HPCToolkit~\cite{ibs-sc} uses Intel PEBS and AMD IBS to associate performance metrics with both static and heap allocated data objects. It identifies problematic data objects with poor cache locality and long access latency. With similar techniques, ArrayTool~\cite{ibs-pact} further analyzes the samples collected by HPCToolkit to provide optimization guidance for array regrouping.
-
-
-These tools, with a common feature, have low measurement overhead, typically less than 10\%. However, they do not provide any insights about false sharing. One may know that a data object suffers from high access latency, but there is no knowledge about whether the high latency comes from false sharing or not. In contrast, \cheetah{} can identify false sharing and also associate it with problematic data objects.
-
+In this section, we review existing tools for detecting false sharing issues, and other lightweight techniques for identifying memory bottlenecks of programs.
 
 \subsection{False Sharing Detection}
-Jayasena et. al. proposes to identify possible memory access patterns that can be caused by false sharing by utilizing a machine learning approach~\cite{mldetect}. Their approach collects events about memory accesses, data caches, TLBs, interactions among cores, and resources stalls, and derives potential memory patterns that can cause false sharing. However, their approach only identify a subset of false sharing problems that are found by \Predator{}~\cite{Predator} and DARWIN~\cite{openmp}. DARWIN utilizes Data Event Address Register (DEAR) on the Itanium 2 processor to sample memory reads~\cite{Wicaksono11detectingfalse, openmp}. Different with \Cheetah{}, DARWIN detects cache coherence events in the first execution and then identifies data structures that can possibly cause false sharing in the second execution.  However, DARWIN cannot present precise information about falsely-shared cache lines. Intel's Performance Tuning Utility (PTU) is a commercialized tool to utilize Intel's (Precise Event Based Sampling registers (PEBS) to detect false sharing. But it cannot pinpoint the root cause of false sharing objects since it does not intercept those memory allocations. Moreover, PTU does not distinguish true and false sharing. 
 
-ScaAnalyzer~\cite{ibs-sc2} studies memory scalability in multithreaded programs. As false sharing is a kind of memory scalability bottleneck, ScaAnalyzer can pinpoint it and assess its impact with the increasing number of cores. 
+Existing tools in false sharing detection can be classified into few different types, based on the way of collecting memory accesses or cache related events. 
 
-All of these tools suffer the same shortcoming: they cannot differentiate false sharing , leaving much burden to programmers for fixing false sharing problems. 
+\paragraph{Simulation Based Approaches.} Simulation based approaches try to simulate the behavior of program executions and predict possible problems inside~\cite{falseshare:simulator}. It relies on the input of programmers about specific cache hierarchy and hardware configurations. However, this types of tools will share the same shortcomings as other simulation based approaches: it can cause more than $100\times$ performance degradation; sometimes the results can be far from the real truth; it is hard to scale up to real applications with millions lines of code. 
 
-There is no much work in performance prediction. Balsamo et. al.~\cite{Balsamo:2004:MPP:987527.987640} presents an overview on performance prediction on software systems. 
-Fahringer et. al. proposes to predict the performance on distributed memory multiprocessor systems, by relying on compiler analysis. 
+% Simulation Based approaches. 
+
+% Instrumentation Based Approaches
+\paragraph{Instrumentation Based Approaches.} Many tools fall into this category. They can be further classified into dynamic instrumentation based approaches~\cite{falseshare:binaryinstrumentation1, falseshare:binaryinstrumentation2, qinzhao}, and static or compiler-based instrumentation based approaches~\cite{Predator}. Dynamic instrumentation based approaches do not need the availability of source code, but may fail to report the exact lines of problems if debugging related information does not exist in the binary file. Their performance can vary dramatically, from around $5\times$ slower ~\cite{qinzhao} to more than $100\times$ slower~\cite{falseshare:binaryinstrumentation1, falseshare:binaryinstrumentation2}. Compiler-based instrumentation can have better performance,  but needs the availability of source code and can not work on legacy programs without the source code~\cite{Predator}. However, all of existing tools introduces more than $5\times$ performance overhead and can not be used in real deployment. 
+
+
+% Hardware performance based approaches
+\paragraph{OS Related Approaches.} Sheriff proposes to turn threads into processes, relies on page protection and isolation to capture memory writes, and reports write-write false sharing problems with reasonable overhead (around 20\%)~\cite{Sheriff}. Plastic provides a VMM-based prototype system that combines the Performance Counter Monitoring (PMU) and page granularity analysis (based on page protection) to narrow down the problems of false sharing problems~\cite{OSdetection}. Both Sheriff and Plastic can automatically tolerate serious false sharing problems as well. However, both of them have their own shortcomings: Sheriff can only work on programs using \texttt{pthreads} libraries, and without ad-hoc synchronizations and sharing-the-stack accesses; Plastic requires that programs should run on the virtual machine environment, which is not the truth for most applications.   
+
+\paragraph{PMU-based approaches.} In order to improve the performance and remove the necessity of source code, more and more tools turns to the hardware support to detect false sharing problems. Jayasena et. al. proposes to collect different types of events like memory accesses, data caches, TLBs, interactions among cores, and resources stalls, and uses the machine learning approach to derive potential memory patterns that can cause false sharing~\cite{mldetect}. However, they misses a lot of false sharing problems. DARWIN collects cache coherence events at the first round, then identifies possible memory accesses on data structures that are involved in frequent cache invalidations for the second round~\cite{openmp}. DARWIN also requires manual effort or expertise to verify whether false sharing occurs or not. Intel's PTU also relies on memory sampling mechanism but can not differentiate false sharing and true sharing since it discards the temporal information of memory accesses and can not present the detailed memory accesses on a cache line~\cite{detect:ptu}. DProf helps programmers identify cache misses based on AMD's instruction-based sampling hardware~\cite{DProf}. DProf requires manual annotation to locate data types and object fields, and cannot detect false sharing when multiple objects reside on the same cache line. \\
+
+\cheetah{} falls into the category of PMU-based approaches. But it avoids shortcomings of existing PMU-based tools: it does not rely manual annotation, or experts' expertise, or multiple executions to locate the problem; it won't have false positives. Comparing to approaches of using simulation and instrumentation, it has very low performance overhead and make it practical to be used in the real deployment. It won't have the limitations of OS-related approaches as well.  
+
+\todo{mention it can work on the mysql.
+ It is also the first work that can predict the performance impact of false sharing problems. }
+
+\subsection{Other PMU Related Analysis}
+%There are many tools to analyze memory related bottlenecks, not necessarily relate to false sharing problems. 
+%By monitoring every memory access, prior tools can analyze memory related bottlenecks, such as SLO~\cite{SLO1}, Valgrind~\cite{Nethercote:2007:VFH:1250734.1250746}, and MemSpy~\cite{Martonosi92}, but they may incur hundreds of times slowdowns. Selectively monitoring memory accesses can still cause 3-5$\times$ overhead, like MACPO~\cite{macpo}. 
+
+PMU related techniques are widely used to identify other performance problems, such as memory system behavior and data locality. Itzkowitz et. al. introduced the memory profiling to Sun ONE Studio, which can collect and analyze memory accesses in sequential programs and report measurement data related to annotated code segment~\cite{DBLP:conf/sc/ItzkowitzWAK03}. Buck and Hollingsworth developed Cache Scope to perform data-centric analysis using Itanium2 event address registers (EAR)~\cite{DBLP:conf/sc/BuckH04}. Cache Scope associates latency with data objects and functions that accessed them. HPCToolkit~\cite{ibs-sc} uses Intel PEBS and AMD IBS to associate performance metrics with both static and heap allocated data objects. It identifies problematic data objects with poor cache locality and long access latency. With similar techniques, ArrayTool~\cite{ibs-pact} further analyzes the samples collected by HPCToolkit to provide optimization guidance for array regrouping.
+
+These tools have low overhead, typically less than 10\%, because of using PMU registers. Existing tools may point out a data object suffering with high access latency, but they can not tell whether the high latency comes from false sharing or not. In contrast, \cheetah{} can correctly identify false sharing problems and associate with problematic data objects.
+
+% Comments: we will add this in the final version. But there is no need to add this since it haven't been published yet. 
+% ScaAnalyzer~\cite{ibs-sc2} studies memory scalability in multithreaded programs. As false sharing is a kind of memory scalability bottleneck, ScaAnalyzer can pinpoint it and assess its impact with the increasing number of cores. 
+
+
 
 \subsection{Performance Prediction}
 
 % What is the idea of performance prediction? 
 % How to predict? 
+There is no much work in performance prediction. Balsamo et. al.~\cite{Balsamo:2004:MPP:987527.987640} presents an overview on performance prediction on software systems. 
+Fahringer et. al. proposes to predict the performance on distributed memory multiprocessor systems, by relying on compiler analysis. 
+
 hihi ~\cite{Balsamo:2004:MPP:987527.987640} presents some recent researches that tries to use performance models to quantitatively predict the behavior of software system in the early-phase of development. 
 
 hihi ~\cite{impactofsharing}
