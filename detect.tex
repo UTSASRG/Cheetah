@@ -2,8 +2,12 @@
 \label{sec:detect}
 
 % What is the basic idea? Why those ones uses performance counters can not reveal false sharing problems? 
-\cheetah{} aims to report false sharing that has a significant performance impact to the whole program execution, that is, a large number of cache invalidations occur in cache lines. Though hardware performance counters can collect events related to the cache invalidation, they have difficulties in identifying its root causes, such as instructions and data objects involved in the cache invalidation. In contrast, directly analyzing the memory traces collected by PMU can give more insights. Given a set of memory addresses, one typically needs the configuration of cache hierarchy and the knowledge of thread-to-core mappings to perform accurate analysis. 
-\cheetah{}, designed to be independent from architectures and runtime environments, detect cache invalidations based on a rule: \emph{If a thread writes a cache line after other threads have accessed the same cache line, this write operation causes a cache invalidation}. To match the rule with the practice, \cheetah{} further makes the following two assumptions:
+\cheetah{} aims to report false sharing with significant performance impact. Since only cache lines with a large number of cache invalidations can have big performance impact on the performance, \cheetah{} should locate those cache lines. However, this task turns out to be difficult because cache invalidation depends on pattern of memory accesses, actual cache hierarchy and thread-to-core mappings. 
+
+Thus, \cheetah{} proposes a simple rule to track cache invalidations: {\emph if a thread writes a cache line after other threads have accessed the same cache line, this write operation causes a cache invalidation}. This rule is based on the following two assumptions:
+ 
+%Though hardware performance counters can collect events related to the cache invalidation, they have difficulties in identifying its root causes, such as instructions and data objects involved in the cache invalidation. In contrast, directly analyzing the memory traces collected by PMU can give more insights. Given a set of memory addresses, one typically needs the configuration of cache hierarchy and the knowledge of thread-to-core mappings to perform accurate analysis. 
+
 \begin{itemize} 
 \item {\bf Assumption 1:} Each thread runs on a separate core with its own private cache. 
 
@@ -11,20 +15,13 @@
  
 \end{itemize}
 
-Assumption 1 is reasonable because thread over-subscription is rare for computation intensive programs. Moreover, given different architectures and operating systems, threads may be scheduled to different cores. Thus, even in one execution, threads are scheduled to the same core, we still need to conservatively assume that they can run on different cores during different executions.
-%If multiple threads are actually running on the same core, false sharing problems may cause less performance penalty. 
-To this end, Assumption 1 actually presents the worst scenario for a given false sharing. 
-With this assumption, \cheetah{} is independent from thread-to-core mapping.
-%does not need to know the actual situation where a thread is running by assuming different threads are running on different cores; there is no need to know actual cache hierarchy by assuming different cores having their own cache (at least L1). 
+Assumption 1 is reasonable because thread over-subscription is generally rare for computation intensive programs. This assumption just over-reports the number of cache invalidations, if multiple threads are actually scheduled to the same core or different cores may share part of cache hierarchy. In this meaning, Assumption 1 actually presents the worst scenario for a given false sharing instance. With this assumption, \cheetah{} is independent from thread-to-core mapping or actual cache hierarchy.
 
-Assumption 2 conservatively assumes that every access can be a hit to the cache. Only both reads and writes to the data in the cache, cache invalidation may occur. Otherwise, if the data is in main memory, accessing it does not incur any cache invalidation. This assumption prevents \cheetah{} from depending on the cache capacity and also assumes the worst scenario, like Assumption 1.
+Assumption 2 further defines the behavior related to cache eviction and invalidation. If there is a memory access within a cache line, the hardware cache (of running this thread) always holds the data until an access of other threads (running on other cores by assumption 1) invalidates it.  This assumption avoids to track cache evictions caused by cache capacity. 
 %However, 
 %If there is a memory access within a cache line, the hardware cache (of running this thread) always holds the data until an access of other threads (running on other cores by assumption 1) invalidates it. Thus, there is no need to track cache evictions that are caused by cache capacity. 
 
-With applying both of these assumptions, \cheetah{} can identify cache validations by simply checking memory accesses patterns without knowing the actual memory hierarchy and parallel execution environments: if a memory access of a thread will load a cache line into its own private cache (assumption 1), only a write from a different thread can invalidate this cache line. Thus, we can report the number of cache validations by analyzing memory traces only, similar to the previous work~\cite{Predator, qinzhao}. 
-
-{\color{red}\Cheetah{} is a library that can be preloaded (using \texttt{LD\_PRELOAD} or can be linked to: there is no need to change or recompile the programs, or to modify the underlying operating system. } {\color{blue} Do you want to put this sentence here?}
-%This idea is very similar to Predator~\cite{Predator}. \Cheetah{} will rely on hardware-performance counters to reduce performance overhead of detection, instead of a instrumentation-based approach~\cite{Predator}. 
+Combing these two assumptions, \cheetah{} can identify cache validations simply based on the pattern of memory accesses, without knowing the actual memory hierarchy and parallel execution environments. Based on this rule, we can report the number of cache validations by analyzing memory traces only, similar to the prior work~\cite{Predator, qinzhao}. 
 
 In the remaining of this section, we elaborate how we install PMU-based sampling mechanism for memory accesses in Section~\ref{sec:perfcounter}, how we track memory accesses and data allocation in Section~\ref{sec:shadow}, how we analyze access patterns for cache invalidation in Section~\ref{sec:computeinvalidations}, and how we report false sharing in Section~\ref{sec:report}.
 % This idea is similar to Predator. But Predator is a compiler-based approach, which needs to change the source code of applications. Also, it introduces much performance overhead that can block its use in deployment environment. 
