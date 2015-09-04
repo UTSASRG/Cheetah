@@ -123,27 +123,27 @@ The performance overhead of \cheetah{} mainly comes from the following aspects.
 
 Different with previous tools, \cheetah{} can assess the performance impact of false sharing problems so that programmers can focus only on important problems. This section evaluates the precision of assessment. 
 
-We evaluated the precision of assessment on two applications, \texttt{linear\_regression} and \texttt{streamcluster}, since they have been observed to have serious false sharing problems. We listed the results as Table~\ref{tbl: precision}. In this table, \texttt{linear\_regression} is abbreviated as ``linear\_rg''.  We evaluated different situations for these two cases, when the number of threads is equal to 16, 8, 4, and 2 correspondingly. We listed the predicted performance impact in the ``Assessment'' column and the actual improvement in the ``Real Case'' column of the table. 
+We evaluated the precision of assessment on two applications, \texttt{linear\_regression} and \texttt{streamcluster}, since they have been observed to have serious false sharing problems. We listed the results as Table~\ref{tbl: precision}. In this table, \texttt{linear\_regression} is abbreviated as ``linear\_rg''.  We evaluated different situations for these two cases, when the number of threads is equal to 16, 8, 4, and 2 correspondingly. We listed the predicted performance impact in the ``Predict'' column and the actual improvement in the ``Real'' column of the table. The last column of this table lists the difference between the predicted improvement and the real improvement. The difference is calculated by divide the difference by the real improvement. If the number is larger than 0, predicted performance improvement is less than the real improvement.  
 
-Results of Table~\ref{tbl: precision} show that \cheetah{} can perfectly assessment the performance impact of false sharing in every case. Relying on the assessment, programmers don't have to spend time on those in-significant false sharing problems any more. 
+Results of Table~\ref{tbl: precision} show that \cheetah{} can perfectly assessment the performance impact of false sharing in every case, with less than 10\% difference. Relying on the assessment, programmers don't have to spend time on those in-significant false sharing problems any more. 
 
 
 \begin{table}
   \small
   \centering
-  \begin{tabular}{ c | c | c | c}
-  \textbf{Application} & {Threads (\#)} & \textbf{Assessment} & \textbf{Real Case} \\ \hline
-\texttt{linear\_re} & 16 & 6.44X    & 6.7X \\
-\texttt{linear\_re}& 8  & 5.56X    & 5.4X \\
-\texttt{linear\_re} & 4  & 3.86X  & 4.1X  \\
- \texttt{linear\_re}& 2  & 2.18X  & 2X    \\ \hline
- \texttt{streamcluster} & 16 & 1.016X    & 1.015X \\
- \texttt{streamcluster} & 8 & 1.017X    & 1.018X \\
- \texttt{streamcluster} & 4 & 1.024X    & 1.022X \\
- \texttt{streamcluster} & 2 & 1.033X    & 1.035X \\
+  \begin{tabular}{ c | c | c | c | c}
+  \textbf{Application} & \specialcell{Threads \\ (\#)} & \textbf{Predict} & \textbf{Real} & \specialcell{Diff \\ (\%)}\\ \hline
+\texttt{linear\_re} & 16 & 6.44X    & 6.7X & {-3.8}\\
+\texttt{linear\_re}& 8  & 5.56X    & 5.4X & {+3.0}\\
+\texttt{linear\_re} & 4  & 3.86X  & 4.1X  & {-5.8}\\
+ \texttt{linear\_re}& 2  & 2.18X  & 2X    & {+9}\\ \hline
+ \texttt{streamcluster} & 16 & 1.016X    & 1.015X &  {0}\\
+ \texttt{streamcluster} & 8 & 1.017X    & 1.018X & {0}\\
+ \texttt{streamcluster} & 4 & 1.024X    & 1.022X & {0}\\
+ \texttt{streamcluster} & 2 & 1.033X    & 1.035X & {0}
+ %\hline
 \end{tabular}
   \caption{
     Precision of assessment. \label{tbl: precision}}
 \end{table}
 
-\todo{Added the difference between the assessment and the truth}
