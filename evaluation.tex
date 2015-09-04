@@ -107,6 +107,8 @@ Comparing with Predator, \cheetah{} can not detect false sharing problems in the
 \caption{Runtime overhead of \Cheetah{}. We normalized the runtime to that of \pthreads{}. Averagely, \cheetah{} only introduces around 7\% performance overhead on all evaluated benchmarks, which makes it practical to be used in the deployed software. }
 \end{figure*}
 
+\todo{Changing the picture to use larger unit so that it will show less in figure}
+
 We show the runtime overhead of \cheetah{} in Figure~\ref{fig:overhead}. We evaluated all benchmarks for three times and shown the average results here. According to this figure, \cheetah{} only introduces around 7\% performance overhead, which makes it practical to be utilized in the real deployment. 
 
 We configure \cheetah{} with the sampling frequency at 64K instructions. Thus, for every 64K instructions, the pre-installed trap handler will be notified once so that \cheetah{} can collect the information of each sampled memory access. Because of \cheetah{}'s very coarse sampling rate, we should  let programs to run sufficiently long enough for our tool. If an application only runs less than 5 seconds, \cheetah{} can not gather enough data for the detection and assessment. Thus, we changed all phoenix benchmarks to only create 16 threads for each application, even the hardware has 48 cores.  We created 16 threads for Parsec benchmarks too, if arguments includes the number of threads. For other benchmarks, we used 48 threads. 
