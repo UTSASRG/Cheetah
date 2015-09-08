@@ -2,16 +2,16 @@
 
 \label{sec:predictimprove}
 
-Fixing false sharing problems can be non-trivial, even with precise information about a particular false sharing problem. However, fixing false sharing problems does not necessarily bring the performance improvement. For example, existing tools report a big number of cache invalidations that are caused by false sharing in word\_count or reverse\_index applications, but fixing them brings negligible performance improvement~\cite{Sheriff, Predator}. Zhao et. al. observed that fixing may even slowdown a program because of excessive memory consumption or the lose of locality~\cite{qinzhao}. Reporting insignificant false sharing instances are not false positives, but that increases manual burden for programmers.
+Fixing false sharing problems can be non-trivial, even with precise information about a particular false sharing problem. Even worse, fixing false sharing problems does not necessarily bring the performance improvement. For example, existing tools report a big number of cache invalidations related to false sharing in word\_count or reverse\_index applications, but fixing them brings negligible performance improvement~\cite{Sheriff, Predator}. Zhao et. al. even observed that fixing may even slowdown a program because of excessive memory consumption or the lose of locality~\cite{qinzhao}. Reporting insignificant false sharing instances are not false positives, but that increases manual burden for programmers.
 
 To resolve this problem, \cheetah{} makes the first attempt to quantitatively assess the potential performance gain of fixing a particular false sharing problem. So that programmers can focus on severe problems only, avoiding unnecessary manual effort.
 
 \cheetah{}'s assessment is based on the following observations:
 
 \begin{itemize}
-\item We observe that the sampling is evenly distributed over the whole execution, so that we can  use the results of sampling to represent the whole execution. The similar ideas has been widely used by the exiting work like Oprofile and Gprof to identify the hotspots of function calls and code~\cite{oprofile, DBLP:conf/sigplan/GrahamKM82}.
+\item {\bf Observation 1:} the sampling is evenly distributed over the whole execution. Thus, we can  use the results of sampling to represent the whole execution. The similar ideas has been widely used by the exiting work like Oprofile and Gprof to identify the hotspots of function calls and code~\cite{oprofile, DBLP:conf/sigplan/GrahamKM82}.
 
-\item PMU hardware provides the latency information (e.g. cycles) of each memory load operation. We also observed that the latency of accessing falsely shared objects is significantly higher than that of normal accesses. 
+\item {\bf Observation 2:} PMU hardware provides the latency information (e.g. cycles) of each memory load operation. We also observed that the latency of accessing falsely shared objects is significantly higher than that of normal accesses. 
 
 \end{itemize}
 
