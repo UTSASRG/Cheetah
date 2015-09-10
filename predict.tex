@@ -85,7 +85,7 @@ To simplify the prediction and verify our idea, \cheetah{} currently focuses on 
 
 After that, \cheetah{} can assess the final performance impact on an application. Based on the predicted execution time of different threads as described in Section~\ref{sec:impactthread}, \cheetah{} recomputes the length of each phase and the total time after fixing: the length of each phase is decided by the thread with the longest execution time, while the total time is equal to the sum of different parallel phases and serial phases. 
 
-\cheetah{} will compute the potential performance improvement based on EQ.(\ref{eq:improvement}), where runtime is denoted by $RT$. We will report the potential performance improvement for every falsely-shared object in the end as Figure~\ref{fig:lr}. Then programmers can focus only on those ones with serious performance impact. 
+\cheetah{} will compute the potential performance improvement based on EQ.(\ref{eq:improvement}), where runtime is denoted by $RT$. We will report the potential performance improvement for every falsely-shared object in the end as Figure~\ref{fig:lr}. Then programmers can focus only on those ones with serious performance impact. We further verify the precision of \cheetah{}'s assessment in Section~\ref{sec:precision}.
 
 \begin{equation}
 \label{eq:improvement}
@@ -94,7 +94,6 @@ Perf_{improve}= RT_{App} / PredictRT_{App}
 
 %We will uses an example to show that. For example, there is a false sharing problem that will involved in the $T1$ and $T2$ of Figure~\ref{fig:forkjoinmodel}, but not other threads.  We will assess the possible runtime of $PredictRT_{T1}$ and $PredictRT_{T2}$. Then we checked that whether these predicted runtime will affect the runtime of parallel phase I by checking whether these two runtime are less than the runtime of $T3$ at first. If it won't, then fixing the false sharing problem won't affect the final performance. Otherwise, we have to recompute the length of parallel phase I, while the length of other phases will keep the same. By doing that, we will get a new runtime for the application. Using the EQ.(\ref{eq:improvement}), we can compute the potential performance improvement of this application by fixing the false sharing problems related to the thread $T1$ and $T2$. 
 
-We further verified the precision of \cheetah{}'s assessment in Section~\ref{sec:precision}.
 
 
 
