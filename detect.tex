@@ -43,7 +43,7 @@ In order to sample memory accesses, \cheetah{} programs the PMU registers to tur
 
 Inside the signal handler, \Cheetah{} collects detailed information of every sampled memory access, including its memory address, thread id, read or write operation, and access latency, which can be fed into the computing module to compute the number of cache invalidations and the prediction module to predict performance impact.
 
-\subsection{Utilizing Shadow Memory and Custom Heap}
+\subsection{Locating Cache Line}
 \label{sec:shadow}
 
 For each sampled memory access, \cheetah{} will decide whether this access causes a cache invalidation or not and records the detailed information about this access. For this purpose, \cheetah{} should quickly locate an access's related cache line. \Cheetah{} utilizes the shadow memory mechanism to speedup this locating procedure.

@@ -4,59 +4,48 @@
 
 Fixing false sharing problems can be non-trivial, even with precise information about a particular false sharing problem. Even worse, fixing false sharing problems does not necessarily bring the performance improvement. For example, existing tools report a big number of cache invalidations related to false sharing in word\_count or reverse\_index applications, but fixing them brings negligible performance improvement~\cite{Sheriff, Predator}. Zhao et. al. even observed that fixing may even slowdown a program because of excessive memory consumption or the lose of locality~\cite{qinzhao}. Reporting insignificant false sharing instances are not false positives, but that increases manual burden for programmers.
 
-To resolve this problem, \cheetah{} makes the first attempt to quantitatively assess the potential performance gain of fixing a particular false sharing problem. So that programmers can focus on severe problems only, avoiding unnecessary manual effort.
+To resolve this problem, \cheetah{} makes the first attempt to quantitatively assess the potential performance gain of fixing a false sharing instance. Thus, programmers can focus on severe problems only, avoiding unnecessary manual effort.
 
 \cheetah{}'s assessment is based on the following observations:
 
 \begin{itemize}
-\item {\bf Observation 1:} the sampling is evenly distributed over the whole execution. Thus, we can  use the results of sampling to represent the whole execution. The similar ideas has been widely used by the exiting work like Oprofile and Gprof to identify the hotspots of function calls and code~\cite{oprofile, DBLP:conf/sigplan/GrahamKM82}.
+\item {\bf Observation 1:} the sampling is evenly distributed over the whole execution. Based on this, we can  use the results of sampling to represent the whole execution. This idea is widely used by the exiting work like Oprofile and Gprof when they identify the hotspots of function calls and code~\cite{oprofile, DBLP:conf/sigplan/GrahamKM82}.
 
 \item {\bf Observation 2:} PMU hardware provides the latency information (e.g. cycles) of each memory load operation. We also observed that the latency of accessing falsely shared objects is significantly higher than that of normal accesses. 
 
 \end{itemize}
 
-Based on these two observations, {\bf we propose to use the sampled cycles of an execution to represent the execution time or the runtime}. 
-
-\cheetah{} predicts the performance impact of an falsely-shared object $O$ in three steps listed as follows. 
+Based on these two observations, {\bf we propose to use the sampled cycles to represent the runtime time of an execution and further predict the performance impact of an falsely-shared object $O$}. The assessment is performed in three steps listed as follows. 
 
 \begin{itemize}
-\item \cheetah{} first evaluates how much performance impact on accesses on this object $O$, as discussed in Section~\ref{sec:impactobject}. 
+\item \cheetah{} first evaluates the performance impact on accesses on this object $O$, as discussed in Section~\ref{sec:impactobject}. 
 
-\item Then \cheetah{} assesses how much performance impact on the related threads by fixing this false sharing problem, which is discussed in Section~\ref{sec:impactthread}. 
+\item Then \cheetah{} assesses the performance impact on the related threads by fixing this false sharing problem, which is discussed in Section~\ref{sec:impactthread}. 
  
-\item In the end, \cheetah{} assesses how much performance impact on the application, seen in Section~\ref{sec:impactapp}. 
+\item In the end, \cheetah{} assesses the performance impact on the application, seen in Section~\ref{sec:impactapp}. 
 \end{itemize}
 
 
 \subsection{Impact on Accesses of the Object}
 \label{sec:impactobject}
 
-To assess the performance impact of fixing a falsely-shared object $O$, \cheetah{} has to collect the following information. 
- 
-\begin{itemize}
-\item $Cycles_O$: total cycles on a falsely-shared object $O$.
-\item $Accesses_O$: total number of accesses on the object $O$.  
-\item $AverageCycles_{nofs}$: the average cycles of every memory access on non-falsely-shared (abbreviated as ``non-FS'') objects. \cheetah{} utilizes the average cycles of each access that happened in the serial phases as the $AverageCycles_{nofs}$. There is no false sharing problem in serial phases since there is only one thread in total.  
+To assess the performance impact of fixing a falsely-shared object $O$, \cheetah{} has to collect the following information related to this object $O$:  total cycles of accesses-- $Cycles_O$, total number of accesses--$Accesses_O$, and the average cycles of every memory access after fixing--$AverCycles_{nofs}$.
 
-\end{itemize}
-
-Based on the information, \cheetah{} predicts the total cycles of all accesses after the fix, noted as $PredictCycles_{O}$, to be equal to  
- the product of $Accesses_O$ and $AverageCycles_{nofs}$, as shown in EQ.(\ref{eq:predictedcyclesofo}).
+Based on these numbers, \cheetah{} first predicts the total cycles of all accesses after fixing, noted as $PredictCycles_{O}$ according to EQ.(\ref{eq:predictedcyclesofo}).   
  
 \begin{equation}
 \label{eq:predictedcyclesofo}
  PredictCycles_{O} = (AverageCycles_{nofs} * Accesses_O);
 \end{equation} 
  
-Here, we assume that the number of accesses after fixing keeps the same (e.g. $Accesses_O$), and the best latency of each access after fixing the false sharing problem of the object $O$ will be equal to $AverageCycles_{nofs}$. But in reality, the cycle of every access can be larger than $AverageCycles_{nofs}$ since fixing false sharing problems may cause excessive memory consumption or the lose of locality~\cite{qinzhao}. Thus, our prediction will provide an upper bound of performance improvement. 
-
-
+However, it is impossible to know $AverCycles_{nofs}$ for $O$ after fixing without the actual fix. Thus, \cheetah{} utilizes the average cycles of each access in the serial phases to approximate this. There is no false sharing in serial phases of multithreaded programs, which represents the best scenario of fixing an existing false sharing instance. In reality, the cycles of every access after fixing can be larger than the $AverCycles_{nofs}$, since fixing false sharing may lead to excessive memory consumption or the lose of locality~\cite{qinzhao}. Thus, our prediction actually provides an upper bound of performance improvement. 
+ 
 \subsection{Impact on Related Threads}
 \label{sec:impactthread}
 
-After getting the $PredictCycles_{O}$, we will assess the possible execution time of different threads by fixing the false sharing problem of Object $O$. 
+After getting the $PredictCycles_{O}$, \cheetah{} assesses the possible execution time of different threads by fixing a false sharing instance of object $O$. 
 
-To achieve this target, \Cheetah{} will collect the following information of every thread: the execution time -- $RT_{thread}$, the total number of accesses $Accesses_{thread}$, and the total cycles of all memory accesses in this thread -- $Cycles_{thread}$.
+\Cheetah{} collects the following information of every thread: the execution time -- $RT_{thread}$, the total number of accesses $Accesses_{thread}$, and the total cycles of all memory accesses in this thread -- $Cycles_{thread}$.
 
 In real implementation, \cheetah{} intercepts the creation of different threads by passing a custom function as the start routine. In this custom function, \cheetah{} gets the timestamp before and after running the actual thread function so that it can compute the execution time of a thread ($RT_{thread}$). To gather the number of accesses and cycles of every thread, \cheetah{} makes every thread to respond the signal handler and records the number of accesses and cycles correspondingly when every memory access is sampled, as described in Section~\ref{sec:perfcounter}. 
 
