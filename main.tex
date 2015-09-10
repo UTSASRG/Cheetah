@@ -26,7 +26,7 @@
 
 % \documentclass{acm_proc_article-sp}
 
-\documentclass[10pt]{sigplanconf}
+\documentclass[10pt,nocopyrightspace]{sigplanconf}
 
 \date{} % \vspace*{-0.2in}}
 
@@ -91,6 +91,8 @@
 \newcommand{\mprotect}{\cfunction{mprotect}}
 \newcommand{\mlock}{\cfunction{mlock}}
 \newcommand{\fixme}[1]{{\color{red}[\textsf{#1}]}}
+\newcommand{\specialcell}[2][c]{%
+  \begin{tabular}[#1]{@{}c@{}}#2\end{tabular}}
 
 
 \hyphenation{app-li-ca-tion}
@@ -179,7 +181,8 @@
 \title{{\huge \bf \Cheetah{}}: Detecting False Sharing \\ Efficiently and Effectively}
 
 %\begin{comment}
-\authorinfo{Double blind review}{}{}
+%\authorinfo{Double blind review}{}{}
+\authorinfo{}
 
 %\authorinfo{Tongping~Liu \and Emery~D.~Berger}
 %{School of Computer Science \\
@@ -217,7 +220,7 @@ False Sharing, Detection Tools, Performance
 \section{Introduction}
 \input{introduction}
 
-\input{overview}
+%\input{overview}
 
 \input{detect}
 
@@ -237,14 +240,14 @@ False Sharing, Detection Tools, Performance
 \input{evaluation}
 
 %\section{Discussion}
-\input{discussion}
+%\input{discussion}
 
 \input{relatedwork}
 
 % eliminate global lock
 % possibly adopting a page-ownership protocol as used by ...
 
-\section{Conclusions and Future Work}
+
 \input{conclusion}
 
 
