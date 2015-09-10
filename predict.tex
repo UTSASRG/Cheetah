@@ -38,18 +38,18 @@ Based on these numbers, \cheetah{} first predicts the total cycles of all access
  PredictCycles_{O} = (AverageCycles_{nofs} * Accesses_O);
 \end{equation} 
  
-However, it is impossible to know $AverCycles_{nofs}$ for $O$ after fixing without the actual fix. Thus, \cheetah{} utilizes the average cycles of each access in the serial phases to approximate this. There is no false sharing in serial phases of multithreaded programs, which represents the best scenario of fixing an existing false sharing instance. In reality, the cycles of every access after fixing can be larger than the $AverCycles_{nofs}$, since fixing false sharing may lead to excessive memory consumption or the lose of locality~\cite{qinzhao}. Thus, our prediction actually provides an upper bound of performance improvement. 
+However, it is impossible to know $AverCycles_{nofs}$ for $O$ after fixing without the actual fix. Thus, {\it \cheetah{} utilizes the average cycles of each access in the serial phases to approximate this}. There is no false sharing in serial phases, thus $AverCycles_{nofs}$ represents the best scenario of fixing an existing false sharing instance. In reality, the cycles of every access after fixing can be larger than the $AverCycles_{nofs}$ here, since fixing false sharing may lead to excessive memory consumption or the lose of locality~\cite{qinzhao}. Thus, our prediction actually provides an upper bound of performance improvement. 
  
 \subsection{Impact on Related Threads}
 \label{sec:impactthread}
 
-After getting the $PredictCycles_{O}$, \cheetah{} assesses the possible execution time of different threads by fixing a false sharing instance of object $O$. 
+After getting the $PredictCycles_{O}$, \cheetah{} assesses the possible execution time of different threads affected by fixing false sharing of this object $O$. 
 
-\Cheetah{} collects the following information of every thread: the execution time -- $RT_{thread}$, the total number of accesses $Accesses_{thread}$, and the total cycles of all memory accesses in this thread -- $Cycles_{thread}$.
+\Cheetah{} collects the following information of every thread: the execution time -- $RT_{thread}$, the total number of accesses -- $Accesses_{thread}$, and the total cycles of all memory accesses -- $Cycles_{thread}$.
 
-In real implementation, \cheetah{} intercepts the creation of different threads by passing a custom function as the start routine. In this custom function, \cheetah{} gets the timestamp before and after running the actual thread function so that it can compute the execution time of a thread ($RT_{thread}$). To gather the number of accesses and cycles of every thread, \cheetah{} makes every thread to respond the signal handler and records the number of accesses and cycles correspondingly when every memory access is sampled, as described in Section~\ref{sec:perfcounter}. 
+To collect these numbers, \cheetah{} intercepts the creation of threads by passing a custom function as the start routine. In this custom function, \cheetah{} gets the timestamps of before and after running the thread function, so that it can compute the execution time of a thread ($RT_{thread}$). To gather the number of accesses and cycles of every thread, \cheetah{} makes every thread to respond the signal handler and records the number of accesses and cycles correspondingly  for each sampled memory access, as described in Section~\ref{sec:perfcounter}. 
 
-After that, \cheetah{} first predicts the new cycles of related thread ($PredictCycles_{thread}$) as the EQ.(\ref{eq:predictedcyclesofthread}).
+After the collection, \cheetah{} predicts the new cycles of related thread ($PredictCycles_{thread}$) as the EQ.(\ref{eq:predictedcyclesofthread}).
 
 \begin{equation}
 \label{eq:predictedcyclesofthread}
@@ -57,7 +57,7 @@ After that, \cheetah{} first predicts the new cycles of related thread ($Predict
 \end{equation} 
  
 
-Then based on this, \cheetah{} assesses the predicted runtime of a thread--- $PredictRT_{thread}$--- as the EQ.(\ref{eq:predictedrtofthread}). In this step, we assume that {\bf the execution time is proportional to the cycles of accesses}: the less of cycles means the less of the execution time.  
+Based on this, \cheetah{} assesses the predicted runtime of a thread--- $PredictRT_{thread}$--- as the EQ.(\ref{eq:predictedrtofthread}). In this step, we assume that {\bf the execution time is proportional to the cycles of accesses}: the less of cycles means the less of the execution time.  
 
 \begin{equation}
 \label{eq:predictedrtofthread}
@@ -67,11 +67,11 @@ Then based on this, \cheetah{} assesses the predicted runtime of a thread--- $Pr
 \subsection{Impact on the Application}
 \label{sec:impactapp}
 
-After getting the predicted execution time--$PredictRT_{thread}$-- after fixing a false sharing problem, we will assess how it will finally change the performance of the application. 
+In the end, \cheetah{} assesses how fixing a false sharing instance will change the performance of the application. 
 
-This a very challenging topic.  We have to monitor the execution of different threads. For example, if a thread is not in the critical path of the performance, then fixing false sharing problems in this thread will not have an observed impact on the final performance. The assessment can become even more complicated if there are some nested threads in the application. 
+This a very challenging topic. For example, if a thread is not in the critical path, then fixing false sharing problems related to this thread may not have an observed impact on the final performance. The assessment can become even more complicated if nested threads exist inside the application. 
 
-To simplify our prediction and verify the idea, \cheetah{} focuses on its assessment on the normal fork-join model, which is the most important and widely used model. A basic example of fork-join model is shown in  Figure~\ref{fig:forkjoinmodel}. All applications that we evaluated in this paper, including all benchmarks in phoenix and parsec benchmarks suite, utilizes this fork-join model. 
+To simplify the prediction and verify our idea, \cheetah{} currently focuses on applications with the normal fork-join model, shown as Figure~\ref{fig:forkjoinmodel}. This model is the most important and widely used model in reality. All applications that we have evaluated in this paper utilizes this fork-join model. 
 
 \begin{figure*}[ht!]
 \begin{center}
@@ -81,23 +81,20 @@ To simplify our prediction and verify the idea, \cheetah{} focuses on its assess
 \label{fig:forkjoinmodel}}
 \end{figure*}
 
-In order to identify whether an execution belongs to the fork-join model as Figure~\ref{fig:forkjoinmodel}, \cheetah{} has to keep track of creation creations and thread joins. For example, the main thread will enter the parallel phase I after \cheetah{} intercepts the first thread creation. The execution will leave the parallel phase I after all children threads that are created has been joined successfully. 
+\cheetah{} tracks creations and joins of threads in order to verify whether an application uses the fork-join model or not. \Cheetah{} also collects the execution time (RT) of different serial and parallel phases using RDTSC (ReaD-Time Stamp Counter) available on X86 machines~\cite{rtdsc}: the applications enter the first parallel phase I after the first thread creation; The execution will leave a parallel phase after all children threads are joined successfully. 
 
-\Cheetah{} collects the execution time of different serial and parallel phases using RDTSC (ReaD-Time Stamp Counter) on X86 machines. The difference between the stopping point and the starting point will be considered as the length of a phase. 
+After that, \cheetah{} can assess the final performance impact on an application. Based on the predicted execution time of different threads as described in Section~\ref{sec:impactthread}, \cheetah{} recomputes the length of each phase and the total time after fixing: the length of each phase is decided by the thread with the longest execution time, while the total time is equal to the sum of different parallel phases and serial phases. 
 
-After having the information of execution time of different phases, \cheetah{} can predict the final performance impact on the application. The basic idea is to predict the execution time of different threads as described in Section~\ref{sec:impactthread}, then recompute the length of each phase and the total time. After that, we will compute the final performance improvement using the following equation. 
-
-\cheetah{} will compute the potential performance improvement based on EQ.(\ref{eq:improvement}), where runtime is denoted by $RT$.
+\cheetah{} will compute the potential performance improvement based on EQ.(\ref{eq:improvement}), where runtime is denoted by $RT$. We will report the potential performance improvement for every falsely-shared object in the end as Figure~\ref{fig:lr}. Then programmers can focus only on those ones with serious performance impact. 
 
 \begin{equation}
 \label{eq:improvement}
-Perf_{improve}=RT_{actual}/RT_{predict}
+Perf_{improve}= RT_{App} / PredictRT_{App}
 \end{equation}
 
-We will uses an example to show that. For example, there is a false sharing problem that will involved in the $T1$ and $T2$ of Figure~\ref{fig:forkjoinmodel}, but not other threads.  We will assess the possible runtime of $PredictRT_{T1}$ and $PredictRT_{T2}$. Then we checked that whether these predicted runtime will affect the runtime of parallel phase I by checking whether these two runtime are less than the runtime of $T3$ at first. If it won't, then fixing the false sharing problem won't affect the final performance. 
-Otherwise, we have to recompute the length of parallel phase I, while the length of other phases will keep the same. By doing that, we will get a new runtime for the application. Using the EQ.(\ref{eq:improvement}), we can compute the potential performance improvement of this application by fixing the false sharing problems related to the thread $T1$ and $T2$. 
+%We will uses an example to show that. For example, there is a false sharing problem that will involved in the $T1$ and $T2$ of Figure~\ref{fig:forkjoinmodel}, but not other threads.  We will assess the possible runtime of $PredictRT_{T1}$ and $PredictRT_{T2}$. Then we checked that whether these predicted runtime will affect the runtime of parallel phase I by checking whether these two runtime are less than the runtime of $T3$ at first. If it won't, then fixing the false sharing problem won't affect the final performance. Otherwise, we have to recompute the length of parallel phase I, while the length of other phases will keep the same. By doing that, we will get a new runtime for the application. Using the EQ.(\ref{eq:improvement}), we can compute the potential performance improvement of this application by fixing the false sharing problems related to the thread $T1$ and $T2$. 
 
-Although  \cheetah{} only focuses on the fork-join model, the idea of predicting false sharing impact can be applied to other execution models, but with more complexity. We further verified the precision of our assessment in Section~\ 
+We further verified the precision of \cheetah{}'s assessment in Section~\ref{sec:precision}.
 
 
 
