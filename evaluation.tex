@@ -1,7 +1,7 @@
 \section{Evaluation}
 \label{sec:eval}
 
-We evaluated \cheetah{} on an AMD Opteron machine, which has 48 cores and 128 GB memory. \todo{Each processor is a 4-core 64-bit Intel Xeon, operating at 1.6 GHz with a 4MB shared L2 cache a 32KB per-core L1 cache.}  We performed experiments on two well-known benchmark suites: Phoenix~\cite{phoenix-hpca} and PARSEC (with native input)~\cite{parsec}. Table~\ref{} shows the detailed description of each benchmark. 
+We evaluated \cheetah{} on an AMD Opteron machine, which has 48 1.6 GHz Mangy-Cours cores, 64 KB private L1 data cache, 512 KB private L2 cache, 10 MB shared L3 cache, and 128 GB memory. We performed experiments on two well-known benchmark suites: Phoenix~\cite{phoenix-hpca} and PARSEC (with native input)~\cite{parsec}. Table~\ref{} shows the detailed description of each benchmark. 
 
 We use gcc-4.6 to compile these benchmarks, with {\tt -O2} option. For Phoenix benchmarks, we run them using 16 threads because these benchmarks often have too small working set. For PARSEC benchmarks, we run them with 48 threads. Since \cheetah{} is based on the sampling technique, running with more threads will generally runs too fast. We need to run a benchmark at least 5 second to get enough statistical samples. \\
 
