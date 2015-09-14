@@ -35,6 +35,8 @@ We configure \cheetah{} with the sampling frequency at 64K instructions. Thus, f
 
 The performance overhead of \cheetah{} mainly comes from every sampled memory access and each thread creation. For each sample, we will collect information about this access, such as the type of access (read or write), the number of cycles, and update corresponding data structure such as the history table of its corresponding cache line. \cheetah{} also intercepts every thread creation to get the timestamp and update the phase information, which adding some additional overhead. For an application with a large number of threads, such as \texttt{kmeans}, \cheetah{} introduces slightly more overhead than others. 
 
+\todo{Check the creation of threads for kmeans and x264. Initializing IBS registers for every thread adds significant performance overhead. }
+
 %\todo{Should we check how the performance overhead will be changed at a different sample frequency?}
  
 \subsection{Effectiveness}
@@ -48,7 +50,7 @@ The performance overhead of \cheetah{} mainly comes from every sampled memory ac
 %Finally, we study the false sharing that \cheetah{} does not detect in these benchmarks and verify that they have negligible impact to the overall program execution. 
 
 \subsubsection{Case Study: linear\_regression}
-Figure~\ref{fig:lr} shows the output of \cheetah{}. It points out that the {\tt tid\_args} object allocated at line 139, with the structure type {\tt lreg\_args}, incurs a severe false sharing problem. According to the assessment, fixing it can possibly improve the performance by $5.7\times$, where the assessment precision is further evaluated in Section~\ref{sec:precision}. By examining the source code, we can discover that the {\tt tid\_args} object is passed to different threads--linear\_regression\_pthread. Then we can easily find out where false sharing has been exercised, which is shown as Figure~\ref{lr:code}. By checking the word-based information which is not shown in the Figure~\ref{fig:lr}, we can understand the reason of this false sharing problem: different threads are updating different parts of the object {\tt tid\_args} simultaneously, where each thread updates the size of the structure lreg\_args of this common array. This problem is exactly the same as that shown in Figure~\ref{fig:fsinfs}. 
+Figure~\ref{fig:lr} shows the output of \cheetah{}. It points out that the {\tt tid\_args} object allocated at line 139, with the structure type {\tt lreg\_args}, incurs a severe false sharing problem. According to the assessment, fixing it can possibly improve the performance by $5.7\times$, where the assessment precision is further evaluated in Section~\ref{sec:precision}. By examining the source code, we can discover that the {\tt tid\_args} object is passed to different threads--linear\_regression\_pthread. Then we can easily find out where false sharing has been exercised, which is shown as Figure~\ref{lr:code}. By checking the word-based information which is not shown in the Figure~\ref{fig:lr}, we can understand the reason of this false sharing problem: different threads are updating different parts of the object {\tt tid\_args} simultaneously, where each thread updates the size of the structure lreg\_args of this common array. This problem is similar to the example shown in Figure~\ref{fig:penalty}. 
 
 To address the problem, we pad the structure {\tt lreg\_args} with extra bytes, by adding 64 bytes useless content, so that we can force different threads not to access the same cache line. The simple optimization lead to a 5.7$\times$ speedup, which matches the assessment 5.76$\times$ predicted by \cheetah{}.
 
@@ -119,17 +121,18 @@ We do not show the report results of streamcluster because of space limit. For s
 As discussed before, \cheetah{} only detects false sharing problems that actually occur in the execution and can have significant performance impact on the final performance. As observed by Predator~\cite{Predator}, the occurrences of false sharing can be affected by the starting address of objects or the size of the cache line. The performance impact of a false sharing can be greatly impacted by the cache hierarchy. If the number of accesses on a falsely-shared object is not large enough, \cheetah{} may not be able to detect it because of its sampling feature. 
 
 %. In this section, we will compare \cheetah{}'s effectiveness with the state-of-the-art tool -- Predator~\cite{Predator}, which observes the largest number of false sharing instances. 
-Comparing with the state-of-the-art tool Predator, \cheetah{} misses false sharing problems in  \texttt{histogram}, \texttt{reverse\_index} and \texttt{word\_count}~\cite{Predator}. We further fix these false sharing problems according to Predator's detection results. We run these applications on our experimental hardware, with and without false sharing problems. Figure~\ref{fig:fseffectiveness} shows the performance impact. According to Figure~\\ref{fig:fseffectiveness}, all of these benchmarks do not show a significant speedup after fixes, with less than 0.1\% performance improvement. This behavior actually exemplify the advantage of \Cheetah{}: since \cheetah{} only reports false sharing problems with significant performance impact, it can potentially save programmers manual effort spending on applications with trivial performance improvement. 
+Comparing with the state-of-the-art tool Predator, \cheetah{} misses false sharing problems in  \texttt{histogram}, \texttt{reverse\_index} and \texttt{word\_count}~\cite{Predator}. We further fix these false sharing problems according to Predator's detection results. We run these applications on our experimental hardware, with and without false sharing problems. Figure~\ref{fig:fseffectiveness} shows the performance impact. According to Figure~\ref{fig:fseffectiveness}, all of these benchmarks do not show a significant speedup after fixing, with less than 0.1\% performance improvement. This behavior actually exemplifies the advantage of \Cheetah{}: since \cheetah{} only reports false sharing problems with significant performance impact, it can potentially save programmers manual effort spending on applications with trivial performance improvement. 
 
 \subsection{Assessment Precision}
 \label{sec:precision}
 
 Different with all existing tools, \cheetah{} can assess the performance impact of false sharing problems so that programmers can focus only on important problems. This section evaluates the precision of assessment. 
 
-We evaluated the precision of assessment on two applications, \texttt{linear\_regression} and \texttt{streamcluster}, since they have been observed to have serious false sharing problems. We listed the results as Table~\ref{tbl: precision}. In this table, \texttt{linear\_regression} is abbreviated as ``linear\_rg''.  We evaluated different situations for these two cases, when the number of threads is equal to 16, 8, 4, and 2 correspondingly. We listed the predicted performance impact in the ``Predict'' column and the actual improvement in the ``Real'' column of the table. The last column of this table lists the difference between the predicted improvement and the real improvement. The difference is calculated by divide the difference by the real improvement. If the number is larger than 0, predicted performance improvement is less than the real improvement.  
+We evaluate the precision of assessment on two applications, \texttt{linear\_regression} and \texttt{streamcluster}, since they are observed to have serious false sharing problems. We listed the results as Table~\ref{tbl: precision}. In this table, \texttt{linear\_regression} is abbreviated as ``linear\_reg''.  We evaluate these two applications when the number of threads is equal to 16, 8, 4, and 2 correspondingly. We list the predicted performance impact in the ``Predict'' column and the actual improvement in the ``Real'' column of the table. The last column of this table lists the difference between the predicted improvement and the real improvement. If the number is larger than 0, the predicted performance improvement is less than the real improvement. Otherwise, it is the opposite. 
+%The difference is calculated by dividing the difference by the real improvement.  
 
-Results of Table~\ref{tbl: precision} show that \cheetah{} can perfectly assessment the performance impact of false sharing in every case, with less than 10\% difference. Relying on the assessment, programmers don't have to spend time on those in-significant false sharing problems any more. 
-
+Results of Table~\ref{tbl: precision} show that \cheetah{} can perfectly assessment the performance impact of false sharing in every case, with less than 10\% difference for every evaluated execution. %Relying on the assessment, programmers do not have to spend time on trivial false sharing problems any more. 
+According to this novel assessment of \cheetah{}, programmers may save huge amount of manual effort spending unnecessarily on applications with trivial false sharing problems. 
 
 \begin{table}
   \small
@@ -148,6 +151,6 @@ Results of Table~\ref{tbl: precision} show that \cheetah{} can perfectly assessm
  %\hline
 \end{tabular}
   \caption{
-    Precision of assessment. \label{tbl: precision}}
+    Precision of assessment. \Cheetah{} implements the first method to accurately predict the performance improvement of fixing an observed false sharing. \label{tbl: precision}}
 \end{table}
 
