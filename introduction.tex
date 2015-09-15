@@ -30,6 +30,8 @@ A false sharing example inside a multithreaded program (a) causes $13\times$ per
 \label{fig:penalty}}
 \end{figure*}
 
+\todo{Confirm the picture is readable in grey-style printing}
+
 % Now we will talk about existing tools. 
 Unlike true sharing, false sharing is generally avoidable. When threads unnecessarily share the same cache line, we can pad the data so that each thread can be forced to access a different cache line. Although the solution of fixing false sharing is somehow straightforward, detecting them is difficult and even impossible with manual checking, especially for a program with thousands or millions lines of code. Thus, it is very important to employ tools to pinpoint false sharing and provide insightful optimization guidance.
 
