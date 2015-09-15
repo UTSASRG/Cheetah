@@ -7,6 +7,7 @@
 
 Thus, \cheetah{} proposes a simple rule to track cache invalidations: {\emph if a thread writes a cache line after other threads have accessed the same cache line, this write operation causes a cache invalidation}. This rule is based on the following two assumptions:
  
+ \todo{Adding a overview figure about the system.}
 %Though hardware performance counters can collect events related to the cache invalidation, they have difficulties in identifying its root causes, such as instructions and data objects involved in the cache invalidation. In contrast, directly analyzing the memory traces collected by PMU can give more insights. Given a set of memory addresses, one typically needs the configuration of cache hierarchy and the knowledge of thread-to-core mappings to perform accurate analysis. 
 
 \begin{itemize} 
