@@ -112,14 +112,14 @@ We do not show the report results of streamcluster because of space limit. For s
 \centering
 \label{fig:fseffectiveness}
 \includegraphics[width=.9\columnwidth]{figure/trivial.pdf}
-\caption{False sharing problems missed by \cheetah{} have negligible performance impact.}
+\caption{False sharing problems missed by \cheetah{} have negligible (<0.2\%) performance impact .}
 \end{figure}
 
 %\cheetah{} may miss some false sharing instances because of its sampling feature. 
 As discussed before, \cheetah{} only detects false sharing problems that actually occur in the execution and can have significant performance impact on the final performance. As observed by Predator~\cite{Predator}, the occurrences of false sharing can be affected by the starting address of objects or the size of the cache line. The performance impact of a false sharing can be greatly impacted by the cache hierarchy. If the number of accesses on a falsely-shared object is not large enough, \cheetah{} may not be able to detect it because of its sampling feature. 
 
 %. In this section, we will compare \cheetah{}'s effectiveness with the state-of-the-art tool -- Predator~\cite{Predator}, which observes the largest number of false sharing instances. 
-Comparing with the state-of-the-art tool--Predator, \cheetah{} misses false sharing problems in  \texttt{histogram}, \texttt{reverse\_index} and \texttt{word\_count}~\cite{Predator}. We further fix these false sharing problems according to Predator's detection results. We run these applications on our experimental hardware, with and without false sharing problems. Figure~\ref{fig:fseffectiveness} shows the performance impact. According to Figure~\ref{fig:fseffectiveness}, all of these benchmarks do not show a significant speedup after fixing, with less than 0.1\% performance improvement. This behavior actually exemplifies the advantage of \Cheetah{}: \emph{since \cheetah{} only reports false sharing problems with significant performance impact, it can potentially save programmers manual effort unnecessarily spending on applications with trivial performance improvement}. 
+Comparing with the state-of-the-art tool--Predator, \cheetah{} misses false sharing problems in  \texttt{histogram}, \texttt{reverse\_index} and \texttt{word\_count}~\cite{Predator}. We further fix these false sharing problems according to Predator's detection results. We run these applications on our experimental hardware, with and without false sharing problems. Figure~\ref{fig:fseffectiveness} shows the performance impact. According to Figure~\ref{fig:fseffectiveness}, all of these benchmarks do not show a significant speedup after fixing, with less than 0.2\% performance improvement. This behavior actually exemplifies the advantage of \Cheetah{}: \emph{since \cheetah{} only reports false sharing problems with significant performance impact, it can potentially save programmers manual effort unnecessarily spending on applications with trivial performance improvement}. 
 
 \subsection{Assessment Precision}
 \label{sec:precision}
@@ -149,6 +149,6 @@ Results of Table~\ref{tbl: precision} show that \cheetah{} can perfectly assessm
  %\hline
 \end{tabular}
   \caption{
-    Precision of assessment. \Cheetah{} implements the first method to accurately predict the performance improvement of fixing an observed false sharing. \label{tbl: precision}}
+    Precision of assessment. \Cheetah{} implements the first method to accurately predict the performance improvement of fixing an observed false sharing instance. \label{tbl: precision}}
 \end{table}
 

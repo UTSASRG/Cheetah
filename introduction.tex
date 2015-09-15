@@ -30,6 +30,8 @@ A false sharing example inside a multithreaded program (a) causes $13\times$ per
 \label{fig:penalty}}
 \end{figure*}
 
+\todo{Confirm the picture is readable in grey-style printing}
+
 % Now we will talk about existing tools. 
 Unlike true sharing, false sharing is generally avoidable. When threads unnecessarily share the same cache line, we can pad the data so that each thread can be forced to access a different cache line. Although the solution of fixing false sharing is somehow straightforward, detecting them is difficult and even impossible with manual checking, especially for a program with thousands or millions lines of code. Thus, it is very important to employ tools to pinpoint false sharing and provide insightful optimization guidance.
 
@@ -53,7 +55,7 @@ This paper, \cheetah{}, is going to address these issues and has the following c
 
 The remainder of this paper is organized as follows. 
 %Section~\ref{sec:overview} introduces the background of false sharing and the motivation of a new detection tool. 
-Section~\ref{sec:detect} describes the design and implementation of false sharing detection tool. Section~\ref{sec:predictimprove} introduces the assessment of performance impact of false sharing. Section~\ref{sec:eval} presents experimental results, including effectiveness, performance overhead, and the precision of assessment. Section~\ref{sec:relatedwork} discusses some related work and Section~\ref{sec:conclusion} concludes this paper. 
+Section~\ref{sec:detect} describes the design and implementation of false sharing detection tool. Section~\ref{sec:predictimprove} introduces how \cheetah{} assesses the performance impact of a false sharing instance. Section~\ref{sec:eval} presents experimental results, including effectiveness, performance overhead, and the precision of assessment. Section~\ref{sec:discuss} addresses main concerns on hardware dependence, performance and effectiveness. Section~\ref{sec:relatedwork} discusses related work and Section~\ref{sec:conclusion} concludes this paper. 
 
 
 
