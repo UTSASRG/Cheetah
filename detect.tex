@@ -47,8 +47,8 @@ Inside the signal handler, \Cheetah{} collects detailed information of every sam
 \subsection{Locating Cache Line}
 \label{sec:shadow}
 
-For each sampled memory access, \cheetah{} will decide whether this access causes a cache invalidation or not and records the detailed information about this access. For this purpose, \cheetah{} should quickly locate an access's related cache line. \Cheetah{} utilizes the shadow memory mechanism to speedup this locating procedure.
-Shadow memory has been utilized extensively in different fields, such as detecting concurrency bugs~\cite{Harrow:2000:RCM:645880.672080, helgrind, 404681, Savage:1997:EDD:268998.266641}, tracking information flow or data flow~\cite{Cheng:2006:TEF:1157733.1157903, Newsome05dynamictaint, Qin:2006:LLP:1194816.1194834}, or detecting memory errors or others~\cite{qinzhao, Hastings91purify:fast, Seward:2005:UVD:1247360.1247362, Narayanasamy:2006:ALO:1140277.1140303}.  
+For each sampled memory access, \cheetah{} will decide whether this access causes a cache invalidation or not and records the detailed information about this access. For this purpose, \cheetah{} should quickly locate an access's related cache line. \Cheetah{} utilizes the shadow memory mechanism to speedup this locating procedure, similar to prior work~\cite{qinzhao, Predator}. 
+%Shadow memory has been utilized extensively in different fields, such as detecting concurrency bugs~\cite{Harrow:2000:RCM:645880.672080, helgrind, 404681, Savage:1997:EDD:268998.266641}, tracking information flow or data flow~\cite{Cheng:2006:TEF:1157733.1157903, Newsome05dynamictaint, Qin:2006:LLP:1194816.1194834}, or detecting memory errors or others~\cite{qinzhao, Hastings91purify:fast, Seward:2005:UVD:1247360.1247362, Narayanasamy:2006:ALO:1140277.1140303}.  
 % FIXME, if we need less citations. 
 
 To utilize the shadow memory mechanism, we should determine the range of heap memory, which is difficult to know beforehand if using the default heap. Thus, \cheetah{} built its custom heap based on Heap Layers~\cite{Berger:2001:CHM:378795.378821}. \cheetah{} pre-allocates a fixed size of memory
