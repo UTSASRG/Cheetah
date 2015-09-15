@@ -1,7 +1,17 @@
 \section{Discussion}
 
 \label{sec:discuss}
-\subsection{Effectiveness}
+
+This section addresses some possible concerns related to \Cheetah{}. 
+
+\paragraph{Performance Overhead.} On average, \Cheetah{} only introduces 7\% performance overhead for all evaluated applications. However, \cheetah{} does introduce more than 20\% overhead for two applications with a large number of threads because \cheetah{} have to set up corresponding hardware registers for every thread. Although creating a large number of threads in an application is not normal, we expect that we can only setup once with better hardware support. We also expect that the overhead can be further reduced by only sampling memory accesses, but not other non-related instructions such as arithmetic instructions and logic instructions. Hopefully, the hardware can overcome these two limitations in the future.
+
+\paragraph{Effectiveness.} 
+
+We expect that 
+
+
+we see that \Cheetah{} We still expect that the overhead can be further reduced in the future.  
 
 Limitation. 
 We have to setup the hardware platform at first. 
@@ -10,10 +20,9 @@ However, this is not a problem since we may not care about a program's performan
 
 Different sampling rate. 
 
+Hardware related performance overhead 
+
+
 \Cheetah{} may miss those applications that won't have large performance impact. 
-
-\subsection{Performance Overhead}
-
-\Cheetah{}, with the support of lightweight IBS, can identify cache line false sharing efficiently and effectively. However, its runtime overhead can still be as high as 10-20\%, mainly due to the mechanism of AMD IBS. AMD IBS samples every kind of instructions, including arithmetic instructions (e.g., add, sub, mul, and div) and logic instructions (e.g., comp and test), which are useless for analyzing false sharing. Instead, \cheetah{} only requires sampling memory accesses. Because of this hardware limitation, \cheetah{} needs to filter out useless samples with a software method. Such software method needs \cheetah{} to receive samples and check corresponding bits to test if these samples access memory or not; these processes incur high overhead. Hopefully, the hardware can overcome this limitations in the future by only sampling memory loads and stores.
 
 \subsection{Effectiveness}

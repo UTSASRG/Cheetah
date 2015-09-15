@@ -1,6 +1,7 @@
 \section{Assessing the Performance Impact}
 
 \label{sec:predictimprove}
+\todo{Adding a picture}
 
 Fixing false sharing problems can be non-trivial, even with precise information about a particular false sharing problem. Even worse, fixing false sharing problems does not necessarily bring the performance improvement. For example, existing tools report a big number of cache invalidations related to false sharing in word\_count or reverse\_index applications, but fixing them brings negligible performance improvement~\cite{Sheriff, Predator}. Zhao et. al. even observed that fixing may even slowdown a program because of excessive memory consumption or the lose of locality~\cite{qinzhao}. Reporting insignificant false sharing instances are not false positives, but that increases manual burden for programmers.
 

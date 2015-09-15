@@ -1,6 +1,7 @@
 \section{Detecting False Sharing}
 \label{sec:detect}
 
+\todo{diagram}
 % What is the basic idea? Why those ones uses performance counters can not reveal false sharing problems? 
 \cheetah{} aims to report false sharing with significant performance impact. Since only cache lines with a large number of cache invalidations can have big performance impact on the performance, \cheetah{} should locate those cache lines. However, this task turns out to be difficult because cache invalidation depends on the pattern of memory accesses, actual cache hierarchy and thread-to-core mappings. 
 
