@@ -1,7 +1,7 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-In this paper, we present \cheetah{}, a lightweight profiler that identifies false sharing in multithreaded programs. \cheetah{} distinguishes true and false sharing, and only reports the false sharing that significantly impacts the whole program performance. In addition, \cheetah{} quantifies the optimization potentials after the optimization. Moreover, \cheetah{} provides insightful guidance in the source code, including data objects and accesses involved in the false sharing, for fixing the problem. Experimental results show that \cheetah{} can successfully identify false sharing in well-known benchmarks and gives accurate assessment to the optimization potentials. \Cheetah{} is available for download at http://github.com/XXXXX.
+In this paper, we present \cheetah{}, a lightweight profiler that identifies false sharing in multithreaded programs. \cheetah{} is the first tool that can quantify the optimization potential, without the need of actually fixing a problem. For false sharing detection, \cheetah{} distinguishes true and false sharing, and only reports problems that can significantly impact the whole program performance. \cheetah{} provides insightful guidance for fixing problems. Experimental results show that \cheetah{} can successfully identify serious false sharing problems and accurately assess the potential performance gain of each problem. \Cheetah{} is ready for real deployment, which is available for download at http://github.com/XXXXX.
 
 %\todo{source code}
 
