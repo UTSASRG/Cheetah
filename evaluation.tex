@@ -61,6 +61,7 @@ To address the problem, we pad the structure {\tt lreg\_args} with extra bytes, 
 {
 \scriptsize
 \begin{minipage}{3in}
+Detecting false sharing at object: start 0x400004b8 end 0x400044b8 (with size 4000). \\
 Accesses 1263 invalidations 27f writes 501 total latency 102988 cycles.\\
 \\
 Latency information: \\
@@ -68,8 +69,9 @@ totalThreads 16 \\
 totalThreadsAccesses 12e1 \\
 totalThreadsCycles 106389 \\
 longestRuntime 7652 \\
-threadReduceRate 0.164697 \\
-totalPossibleImprovementRate 576.172748\% (realRuntime 7738 predictedRuntime 1343).\\
+%threadReduceRate 0.164697 \\
+totalPossibleImprovementRate 576.172748\% \\
+(realRuntime 7738 predictedRuntime 1343).\\
 \\
 It is a heap object with the following callsite:\\
 linear\_regression-pthread.c: 139

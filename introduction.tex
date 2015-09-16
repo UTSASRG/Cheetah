@@ -48,7 +48,8 @@ In this paper, we present \cheetah{} to address these issues, with the following
 \item {\bf First Approach to Predict False Sharing Impact.} This paper introduces the first approach to predict the performance impact of fixing false sharing instances inside multithreaded programs. Based on our evaluation, \cheetah{} can precisely assess the performance improvement, with less than 10\% difference. By ruling out trivial instances, we can avoid unnecessary manual effort leading to little or no performance improvement. 
 
 \item {\bf An Efficient and Effective False Sharing Detection Tool.} \cheetah{} is an efficient false sharing detector with only $\sim$7\% runtime overhead. \Cheetah{} utilizes the Performance Monitoring Units (PMU) that are available on modern CPU architectures to sample memory accesses. \cheetah{} can precisely and correctly report false sharing problems, by pointing out the lines of code or the name of variables with problems. 
-\cheetah{} is language and compiler independent. It works on native binaries that are compiled with any optimization option. 
+%\cheetah{} is language and compiler independent. 
+%It works on native binaries that are compiled with any optimization option. 
 %which does not need custom OS,  or recompilation and changing of programs. 
 \end{itemize}
 
@@ -64,10 +65,15 @@ In this paper, we present \cheetah{} to address these issues, with the following
 
 %
 %is very convenient to use, which is a library that can be preloaded (using \texttt{LD\_PRELOAD} or can be linked to: there is no need to change or recompile the programs, or to modify the underlying operating system.
-\paragraph{\cheetah{} Overview}
-Figure~\ref{fig:components} shows the overview of \Cheetah{}. \Cheetah{} is has a co-design with hardware, operating system, and the user space programs. It monitors the memory accesses via the hardware performance monitoring unit (PMU) supported address sampling. By analyzing the address samples, \cheetah{} identifies significant false sharing problems (in FS-Detection component) and quantifies their impacts to the whole program execution (in FS-assessment component).
+%\paragraph{\cheetah{} Overview}
+Figure~\ref{fig:components} shows the overview of \Cheetah{}. 
+%When the Performance Monitoring Unit (PMU) invokes an interrupt according to the pre-set sampling frequency, 
+The ``data collection'' module collects memory accesses via the hardware performance monitoring unit (PMU) supported address sampling and the ``driver'''s assistance, filters out memory accesses relating to heap or globals, and feeds them into the ``FS detection'' module. At the end of an application or when \cheetah{} is notified to report, the ``FS detection'' module examines the number of cache invalidations of each cache line, differentiates false sharing from true sharing, and passes false sharing instances to the ``FS assessment'' module. In the end, the ``FS report'' module only reports false sharing instances with significant performance impact, with its predicted performance improvement after fixes for every instance provided by the ``FS assessment'' module. 
+
+%\Cheetah{} is has a co-design with hardware, operating system, and the user space programs. It monitors the memory accesses via the hardware performance monitoring unit (PMU) supported address sampling. By analyzing the address samples, \cheetah{} identifies significant false sharing problems (in FS-Detection component) and quantifies their impacts to the whole program execution (in FS-assessment component).
 %'s components. When the Performance Monitoring Unit (PMU) invokes an interrupt according to the pre-set sampling frequency, the ``driver'' passes all information about a memory access to the ``data collection'' module residing in \Cheetah{}'s runtime system. Upon receiving this, the ``data collection'' module filters out memory accesses relating to heap or globals, and feeds them into the ``FS detection'' module. At the end of an application or when \cheetah{} is notified to report, ``FS detection'' will examine the number of cache invalidations of each cache line, differentiate false sharing from true sharing, and pass false sharing instances to the ``FS assessment'' module. Thus, ``FS report'' module only reports false sharing instances with significant performance impact, with its predicted performance improvement after fixes for every instance. 
 
+%\paragraph{Paper Organization} 
 The remainder of this paper is organized as follows. 
 %Section~\ref{sec:overview} introduces the background of false sharing and the motivation of a new detection tool. 
 Section~\ref{sec:detect} describes the design and implementation of false sharing detection tool. Section~\ref{sec:predictimprove} introduces how \cheetah{} assesses the performance impact of a false sharing instance. Section~\ref{sec:eval} presents experimental results, including effectiveness, performance overhead, and the precision of assessment. Section~\ref{sec:discuss} addresses main concerns on hardware dependence, performance and effectiveness. Section~\ref{sec:relatedwork} discusses related work and Section~\ref{sec:conclusion} concludes this paper. 
