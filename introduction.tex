@@ -37,7 +37,7 @@ A false sharing example inside a multithreaded program (a) causes $13\times$ per
 %\todo{Confirm the picture is readable in grey-style printing}
 
 % Now we will talk about existing tools. 
-Unlike true sharing, false sharing is generally avoidable. When threads unnecessarily share the same cache line, we can pad the data or update thread-private variables so that each thread can be forced to access a different cache line. Although the solution of fixing false sharing is somehow straightforward, detecting them is difficult and even impossible with manual checking, especially for a program with thousands or millions lines of code. Thus, it is very important to employ tools to pinpoint false sharing and provide insightful optimization guidance.
+Unlike true sharing, false sharing is generally avoidable. When threads unnecessarily share the same cache line, we can pad the data or make a thread to update its thread-private variable so that different threads can be forced to access a different cache line. Although the solution of fixing false sharing is somehow straightforward, detecting them is difficult and even impossible with manual checking, especially for a program with thousands or millions lines of code. Thus, it is very important to employ tools to pinpoint false sharing and provide insightful optimization guidance.
 
 However, existing general-purpose tools do not provide enough details about false sharing~\cite{gprof, ibs-sc, Intel:VTune}. Existing false sharing detection tools fall short in several ways. First, most tools cannot distinguish true and false sharing, requiring substantial manual effort to identify optimization opportunities~\cite{falseshare:binaryinstrumentation1,detect:ptu,detect:intel,falseshare:binaryinstrumentation2,DProf, qinzhao, OSdetection, mldetect, Wicaksono11detectingfalse, openmp}. Second, software-only tools~\cite{falseshare:binaryinstrumentation1,falseshare:binaryinstrumentation2,falseshare:simulator, Predator} introduce very high runtime overhead, preventing them from being used in deployment environment. Third, OS-related tools have limitations, either with customized OS support~\cite{OSdetection}, or only working on special applications~\cite{Sheriff}. Fourth, no prior tool assesses the benefit from eliminating the false sharing. Without this information, many optimization efforts may yield trivial or no performance improvement.
 
@@ -51,9 +51,20 @@ In this paper, we present \cheetah{} to address these issues, with the following
 %which does not need custom OS,  or recompilation and changing of programs. 
 \end{itemize}
 
-\cheetah{} is very convenient to use. There is no need to change or recompile programs, or to modify the underlying operating system. We evaluate \cheetah{} on two well-known benchmark suites, PARSEC~\cite{phoenix-hpca} and PHOENIX~\cite{parsec}. \cheetah{} successfully identifies significant false sharing problems, while skipping problems with only trivial or no performance improvement.
+\begin{figure}[htbp]
+\centering
+\label{fig:components}
+\includegraphics[width=1\columnwidth]{figure/cheetahcomponents}
+\caption{Overview of \cheetah{}'s components (shadow blocks).}
+\end{figure}
+
+
+%\cheetah{} is very convenient to use. There is no need to change or recompile programs, or to modify the underlying operating system. We evaluate \cheetah{} on two well-known benchmark suites, PARSEC~\cite{phoenix-hpca} and PHOENIX~\cite{parsec}. \cheetah{} successfully identifies significant false sharing problems, while skipping problems with only trivial or no performance improvement.
+
 %
 %is very convenient to use, which is a library that can be preloaded (using \texttt{LD\_PRELOAD} or can be linked to: there is no need to change or recompile the programs, or to modify the underlying operating system.
+
+Figure~\ref{fig:components} shows the overview of \Cheetah{}'s components. When the performance monitoring unit invokes an interrupt according to the pre-set sampling frequency, the driver passes all information about a memory access to the ``data collection'' module residing in \Cheetah{}'s runtime system. Upon receiving this, the ``data collection'' module filters out memory accesses relating to heap or globals, and feeds them into the ``FS detection'' module. At the end of an application or when \cheetah{} is notified to report, ``FS detection'' will examine the number of cache invalidations of each cache line, differentiate false sharing from true sharing, and pass false sharing instances to the ``FS assessment'' module. Thus, ``FS report'' module only reports false sharing instances with significant performance impact, with its predicted performance improvement after fixes for every instance. 
 
 The remainder of this paper is organized as follows. 
 %Section~\ref{sec:overview} introduces the background of false sharing and the motivation of a new detection tool. 
