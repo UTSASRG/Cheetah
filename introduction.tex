@@ -48,6 +48,7 @@ In this paper, we present \cheetah{} to address these issues, with the following
 \item {\bf First Approach to Predict False Sharing Impact.} This paper introduces the first approach to predict the performance impact of fixing false sharing instances inside multithreaded programs. Based on our evaluation, \cheetah{} can precisely assess the performance improvement, with less than 10\% difference. By ruling out trivial instances, we can avoid unnecessary manual effort leading to little or no performance improvement. 
 
 \item {\bf An Efficient and Effective False Sharing Detection Tool.} \cheetah{} is an efficient false sharing detector with only $\sim$7\% runtime overhead. \Cheetah{} utilizes the Performance Monitoring Units (PMU) that are available on modern CPU architectures to sample memory accesses. \cheetah{} can precisely and correctly report false sharing problems, by pointing out the lines of code or the name of variables with problems. 
+\cheetah{} is language and compiler independent. It works on native binaries that are compiled with any optimization option. 
 %which does not need custom OS,  or recompilation and changing of programs. 
 \end{itemize}
 
