@@ -1,9 +1,0 @@
-\section{Discussion}
-
-\label{sec:discuss}
-
-\subsection{Performance Overhead}
-
-\Cheetah{}, with the support of lightweight IBS, can identify cache line false sharing efficiently and effectively. However, its runtime overhead can still be as high as 10-20\%, mainly due to the mechanism of AMD IBS. AMD IBS samples every kind of instructions, including arithmetic instructions (e.g., add, sub, mul, and div) and logic instructions (e.g., comp and test), which are useless for analyzing false sharing. Instead, \cheetah{} only requires sampling memory accesses. Because of this hardware limitation, \cheetah{} needs to filter out useless samples with a software method. Such software method needs \cheetah{} to receive samples and check corresponding bits to test if these samples access memory or not; these processes incur high overhead. Hopefully, the hardware can overcome this limitations in the future by only sampling memory loads and stores.
-
-\subsection{Future Work}
