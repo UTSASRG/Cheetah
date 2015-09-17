@@ -34,7 +34,7 @@ Based on these two observations, {\bf we propose to use the sampled cycles to re
 It computes to the total cycles of all accesses after fixing ($PredictCycles_{O}$) according to EQ.(\ref{eq:predictedcyclesofo}).   
 \begin{equation}
 \label{eq:predictedcyclesofo}
- PredictCycles_{O} = (AverageCycles_{nofs} * Accesses_O);
+ PredictCycles_{O} = (AverageCycles_{nofs} * Accesses_O)
 \end{equation} 
 
 However, it is impossible to know $AverCycles_{nofs}$ for $O$ after fixing without actual fixes. Thus, {\it \cheetah{} utilizes the average cycles of each access in the serial phases to approximate this}. There is no false sharing in serial phases, thus $AverCycles_{nofs}$ represents the best scenario of fixing an existing false sharing instance. In reality, the cycles of every access after fixing can be larger than the $AverCycles_{nofs}$, since fixing false sharing may lead to excessive memory consumption or the lose of locality~\cite{qinzhao}. Thus, our prediction actually provides an upper bound of performance improvement. It is expected that $PredictCycles_{O}$ will be less than the actual cycles -- $Cycles_O$, since fixing a false sharing problem can reduce the execution time of an object.  
