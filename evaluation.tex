@@ -41,7 +41,7 @@ The performance overhead of \cheetah{} mainly comes from every sampled memory ac
 \label{sec:effectiveness}
 
 %The state-of-the-art tool Predator reports five false sharing instances in Phoenix and Parsec benchmark suite, including \texttt{histogram}, \texttt{linear\_regression}, \texttt{reverse\_index}, \texttt{streamcluster}, and \texttt{word\_count}~\cite{Predator}. 
-\cheetah{} successfully detects two known false sharing problems with significant performance impact, including\texttt{linear\_regression} in Phoenix and \texttt{streamcluster} in Parsec, while it does not report false sharing in other benchmarks. 
+\cheetah{} successfully detects two known false sharing problems with significant performance impact, including\texttt{linear\_regression} in Phoenix and \texttt{streamcluster} in Parsec. 
 
 %In the remaining of this section, we discuss how reported information can help us to confirm and fix these false sharing problems. 
 
@@ -61,14 +61,14 @@ To address the problem, we pad the structure {\tt lreg\_args} with extra bytes, 
 {
 %\scriptsize
 \begin{minipage}{3in}
-Detecting false sharing at object: start 0x400004b8 end 0x400044b8 (with size 4000). \\
+Detecting false sharing at the object: start 0x400004b8 end 0x400044b8 (with size 4000). \\
 Accesses 1263 invalidations 27f writes 501 total latency 102988 cycles.\\
 \\
 Latency information: \\
 totalThreads 16 \\
 totalThreadsAccesses 12e1 \\
 totalThreadsCycles 106389 \\
-longestRuntime 7652 \\
+%longestRuntime 7652 \\
 %threadReduceRate 0.164697 \\
 totalPossibleImprovementRate 576.172748\% \\
 (realRuntime 7738 predictedRuntime 1343).\\

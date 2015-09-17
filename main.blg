@@ -1,0 +1,83 @@
+This is BibTeX, Version 0.99d (TeX Live 2014)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: main.aux
+The style file: abbrv.bst
+Database file #1: ref.bib
+I was expecting a `,' or a `}'---line 65 of file ref.bib
+ :  
+ :  title = {Impact of Resource Sharing on Performance and Performance Prediction: A Survey},
+(Error may have been on previous line)
+I'm skipping whatever remains of this entry
+Repeated entry---line 215 of file ref.bib
+ : @article{Balsamo:2004:MPP:987527.987640
+ :                                        ,
+I'm skipping whatever remains of this entry
+Database file #2: tongping.bib
+Database file #3: datacentric.bib
+A bad cross reference---entry "DBLP:conf/sigplan/GrahamKM82"
+refers to entry "DBLP:conf/sigplan/1982", which doesn't exist
+Warning--I didn't find a database entry for "MESI"
+Warning--I didn't find a database entry for "ibs-sc"
+Warning--I didn't find a database entry for "ibs-ispass"
+Warning--I didn't find a database entry for "ibs-sc2"
+Warning--I didn't find a database entry for "Dramon"
+Warning--I didn't find a database entry for "Malony-etal:2008:TAU"
+Warning--I didn't find a database entry for "Intel:VTune"
+Warning--I didn't find a database entry for "macpo"
+Warning--I didn't find a database entry for "SLO2"
+Warning--I didn't find a database entry for "AMDIBS:07"
+Warning--I didn't find a database entry for "IntelArch:PEBS:Sept09"
+Warning--I didn't find a database entry for "SLO1"
+Warning--I didn't find a database entry for "Nethercote:2007:VFH:1250734.1250746"
+Warning--I didn't find a database entry for "Martonosi92"
+Warning--I didn't find a database entry for "DBLP:conf/sc/ItzkowitzWAK03"
+Warning--I didn't find a database entry for "DBLP:conf/sc/BuckH04"
+Warning--I didn't find a database entry for "ibs-pact"
+Warning--I didn't find a database entry for "DBLP:conf/sigplan/1982"
+Warning--to sort, need author or key in impactofsharing
+Warning--empty author in impactofsharing
+Warning--empty title in impactofsharing
+Warning--empty journal in impactofsharing
+Warning--empty year in impactofsharing
+You've used 32 entries,
+            2118 wiz_defined-function locations,
+            743 strings with 11718 characters,
+and the built_in function-call counts, 12995 in all, are:
+= -- 1325
+> -- 597
+< -- 21
++ -- 235
+- -- 202
+* -- 854
+:= -- 2005
+add.period$ -- 109
+call.type$ -- 32
+change.case$ -- 193
+chr.to.int$ -- 0
+cite$ -- 37
+duplicate$ -- 552
+empty$ -- 1019
+format.name$ -- 202
+if$ -- 2886
+int.to.chr$ -- 0
+int.to.str$ -- 32
+missing$ -- 25
+newline$ -- 159
+num.names$ -- 64
+pop$ -- 247
+preamble$ -- 1
+purify$ -- 163
+quote$ -- 0
+skip$ -- 427
+stack$ -- 0
+substring$ -- 729
+swap$ -- 193
+text.length$ -- 21
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 128
+warning$ -- 5
+while$ -- 119
+width$ -- 34
+write$ -- 379
+(There were 3 error messages)

@@ -1,0 +1,13 @@
+%False sharing occurs when multiple threads, running on different cores with separate caches, access logically independent words in the same cache line. 
+False sharing is a well-known performance issue in multithreaded programs. With the cache coherency protocol, false sharing incurs unnecessary slowdowns, hurting scalability. Identifying false sharing in a multithreaded program is challenging. On the one hand, to report problematic instructions and data objects accurately and distinguish them with true sharing, one need to monitor memory accesses, which usually incurs high overhead. On the other hand, existing lightweight techniques have limited precisions in detecting false sharing and often provide inadequate information to guide optimization.
+%that can dramatically degrade the performance of multithreading programs by up to an order of magnitude. 
+%The hardware trend, including adding more cores into the same machine, introducing the Non-Uniform-Memory-Access (NUMA) architecture, or increasing the size of a cache line, will further degrade the performance of false sharing problems, making the task of detecting more urgent. 
+%Existing detection tools have different types of shortcomings: most tools cannot report precise information about false sharing; some may introduce too much performance overhead; some have a lot of limitations on applications or the environment; all tools cannot assess how much performance improvement by fixing a specific false sharing problem. 
+
+\sloppy
+To address these issues, we develop \cheetah{}, a profiler that detects false sharing both {\bf efficiently} and {\bf effectively}. \cheetah{} leverages lightweight hardware performance performance monitoring units that are available on most existing modern hardware to sample memory accesses. Moreover, \cheetah{} can precisely report false sharing and provides insightful optimization guidance for programers. Finally,
+unlike prior work, \cheetah{} quantitatively assesses the potential gains of fixing each false sharing, so programmers can focus on most severe problems only. %\cheetah{} provides the most comprehensive information that can assist users to fix false sharing problems. 
+We evaluate \cheetah{} with a range of applications, including three benchmark suites (Phoenix, PARSEC, and Rodinia), and multiple real applications. \Cheetah{} is able to identify problematic false sharing with only  $\sim$3\% runtime overhead. Guided by \Cheetah{}, we obtain significant performance improvement for XX programs.
+%ready to be used in deployment environment because of its negligible performance overhead (3\%) and its effectiveness.  
+
+\keywords{Multithreading, false sharing, address sampling, lightweight profiling}

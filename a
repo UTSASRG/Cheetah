@@ -1,0 +1,114 @@
+--- bak/detect.tex	2015-09-16 17:36:36.000000000 -0500
++++ detect.tex	2015-09-16 17:39:11.000000000 -0500
+@@ -1,13 +1,14 @@
+ \section{Detecting False Sharing}
+ \label{sec:detect}
+ 
++\todo{diagram}
+ % What is the basic idea? Why those ones uses performance counters can not reveal false sharing problems? 
+-\cheetah{} only reports false sharing with significant performance impact. 
+-%Such false sharing occurs at the memory locations and accesses that cause substantial cache line invalidations. However, identifying both memory locations and accesses is challenging
+-Since only cache lines with a large number of cache invalidations can have significant performance impact on the performance, \cheetah{} should locate those cache lines. However, this turns out to be difficult because cache invalidations depend on memory access patterns, cache hierarchies, and thread-to-core mappings. 
++\cheetah{} only reports false sharing with significant performance impact. Such false sharing occurs at the memory locations and accesses that cause substantial cache line invalidations. However, identifying both memory locations and accesses is challenging
++%Since only cache lines with a large number of cache invalidations can have big performance impact on the performance, \cheetah{} should locate those cache lines. However, this task turns out to be difficult \
++because cache invalidations depend on memory access patterns, cache hierarchies, and thread-to-core mappings. 
+ To address this challenge, \cheetah{} proposes a simple rule to track cache invalidations: {\emph if a thread writes a cache line after other threads have accessed the same cache line, this write operation causes a cache invalidation}. This rule is based on the following two assumptions:
+  
+-%\todo{Adding a overview figure about the system.}
++ \todo{Adding a overview figure about the system.}
+ %Though hardware performance counters can collect events related to the cache invalidation, they have difficulties in identifying its root causes, such as instructions and data objects involved in the cache invalidation. In contrast, directly analyzing the memory traces collected by PMU can give more insights. Given a set of memory addresses, one typically needs the configuration of cache hierarchy and the knowledge of thread-to-core mappings to perform accurate analysis. 
+ 
+ \begin{itemize} 
+@@ -17,9 +18,8 @@
+  
+ \end{itemize}
+ 
+-Assumption 1 is reasonable because thread over-subscription is generally rare for computation intensive programs. This assumption may over-estimate the number of cache invalidations, if multiple threads are actually scheduled to the same physical core or different cores sharing part of cache hierarchy. Under this circumstance, Assumption 1 shows the worst scenario for a given false sharing instance. With this assumption, \cheetah{} does not have to track thread-to-core mapping or know the actual cache hierarchy. 
+-
+-Assumption 2 further defines the behavior related to cache eviction and invalidation. If there is a memory access within a cache line, the hardware cache (of running this thread) always holds the data until an access issued by other threads (running on other cores by assumption 1) invalidates it. This assumption avoids tracking cache evictions caused by cache capacity. 
++Assumption 1 is reasonable because thread over-subscription is generally rare for computation intensive programs. This assumption may over-estimate the number of cache invalidations, if multiple threads are actually scheduled to the same physical core that has no private cache available for each thread. Under this circumstance, Assumption 1 shows the worst scenario for a given false sharing instance, as programmers may expect to run the code on a different architecture with a different thread-to-core mapping. 
++Assumption 2 further defines the behavior related to cache eviction and invalidation. If there is a memory access within a cache line, the hardware cache (of running this thread) always holds the data until an access issued by other threads (running on other cores by assumption 1) invalidates it. This assumption avoids from tracking cache evictions caused by cache capacity. 
+ %However, 
+ %If there is a memory access within a cache line, the hardware cache (of running this thread) always holds the data until an access of other threads (running on other cores by assumption 1) invalidates it. Thus, there is no need to track cache evictions that are caused by cache capacity. 
+ By combing these two assumptions, \cheetah{} identifies cache validations simply based on memory access patterns, independent from the architecture configurations and parallel execution environments~\cite{Predator, qinzhao}. 
+@@ -32,14 +32,11 @@
+ According to the basic rule described above, it is important to track memory accesses of different threads in order to compute the number of cache invalidations on each cache line. Software based approaches may introduce higher than $5\times$ performance overhead~\cite{Predator, qinzhao}. This high overhead can block people from using these tools in real deployment.
+ 
+ %The state-of-the-art work \Predator{} leverages the compiler instrumentation to insert function calls before every memory access~\cite{Predator}. However, this approach introduces more than $5\times$ performance overhead by instrumenting every memory access. Moreover, \Predator{} has to re-compile applications, which needs the availability of source code. \Predator{} is not desirable for legacy applications without the source code, or real deployment that is sensitive to performance. 
+-\cheetah{} significantly reduces the performance overhead by leveraging PMU-based sampling mechanisms, such as AMD instruction-based sampling (IBS) and Intel precise event-based sampling (PEBS), pervasively available in modern CPU architectures. 
++\cheetah{} significantly reduces the performance overhead by leveraging PMU-based sampling mechanisms, such as AMD instruction-based sampling (IBS)~\cite{AMDIBS:07} and Intel precise event-based sampling (PEBS)~\cite{IntelArch:PEBS:Sept09}, pervasively available in modern CPU architectures. 
+ For each sample, PMU distinguishes whether it is a memory read or write, captures the memory address touched by the sampled memory access, and records the thread ID that triggers this sample. Those raw data will be utilized to analyze whether the sampled access incurs a cache invalidation or not, based on the basic rule described in Section~\ref{sec:detect}.
+ 
+ %These information is enough to compute the number of cache invalidations based on the basic rule that is described in Section~\ref{sec:basicidea}. 
+-Since PMU only samples one memory access out of a specified number, \todo{what is the sampling frequency}, it doesn't pose significant performance overhead. Besides that, using PMU-based sampling does not need to instrument source or binary code explicitly, thus providing a non-intrusive way to monitor memory references. \cheetah{} shows that PMU-based sampling, even with sparse samples, can identify false sharing with significant performance impact.
+-%Besides, the rich events recorded by PMU, such as cache misses and latency, can be used for further analysis. 
+-%However, there are still challenges for using PMU-based sampling, which does monitor all memory accesses in the whole program or a execution window. 
+- 
++Since PMU only samples one memory access out of a specified number, it doesn't pose significant performance overhead. Besides that, using PMU-based sampling does not need to instrument source or binary code explicitly, thus providing a non-intrusive way to monitor memory references. Moreover, the rich events, such as cache misses and latency, recorded by PMU can be used for further analysis. However, there are still challenges for using PMU-based sampling, which does monitor all memory accesses in the whole program or a execution window. We use \cheetah{} to show that PMU-based sampling, even with sparse samples, can precisely identify false sharing that has significant impact the the program performance.
+ 
+ \paragraph{Implementation.} 
+ 
+@@ -49,36 +46,36 @@
+ \subsection{Locating Cache Line}
+ \label{sec:shadow}
+ 
+-For each sampled memory access, \cheetah{} will decide whether this access causes a cache invalidation or not and records the detailed information about this access. For this purpose, \cheetah{} should quickly locate an access's related cache line. \Cheetah{} utilizes the shadow memory mechanism to speed up this locating procedure~\cite{qinzhao, Predator}. 
++For each sampled memory access, \cheetah{} will decide whether this access causes a cache invalidation or not and records the detailed information about this access. For this purpose, \cheetah{} should quickly locate an access's related cache line. \Cheetah{} utilizes the shadow memory mechanism~\cite{qinzhao, Predator} to speed up this locating procedure. 
+ %Shadow memory has been utilized extensively in different fields, such as detecting concurrency bugs~\cite{Harrow:2000:RCM:645880.672080, helgrind, 404681, Savage:1997:EDD:268998.266641}, tracking information flow or data flow~\cite{Cheng:2006:TEF:1157733.1157903, Newsome05dynamictaint, Qin:2006:LLP:1194816.1194834}, or detecting memory errors or others~\cite{qinzhao, Hastings91purify:fast, Seward:2005:UVD:1247360.1247362, Narayanasamy:2006:ALO:1140277.1140303}.  
+ % FIXME, if we need less citations. 
+-To utilize the shadow memory mechanism, we should determine the range of heap memory, which is difficult to know beforehand if using the default heap. Thus, \cheetah{} built its custom heap based on Heap Layers~\cite{Berger:2001:CHM:378795.378821}. \cheetah{} pre-allocates a fixed size of memory block (using \texttt{mmap}) and satisfies all memory allocations from that. \cheetah{} adapts the per-thread heap organization used by Hoard so that two objects in the same cache line will never be allocated to two different threads~\cite{Hoard}. This design prevents inter-objects false sharing, but also makes \cheetah{}  cannot report problems caused by the default heap allocator.  
+-%However, we argue that this problem should be fixed by using a modern heap allocator like Hoard~\cite{Hoard}. 
++To utilize the shadow memory mechanism, we should determine the range of heap memory, which is difficult to know beforehand if using the default heap. Thus, \cheetah{} built its custom heap based on Heap Layers~\cite{Berger:2001:CHM:378795.378821}. \cheetah{} pre-allocates a fixed size of memory
++from its underlying operating system using \texttt{mmap} system calls and satisfies memory allocations from this block of memory. \cheetah{} also adapts the per-thread heap organization used by Hoard~\cite{Hoard} so that two objects in the same cache line will never be allocated to two different threads. This design prevents inter-objects false sharing and the \cheetah{} does not report it.
++%but also makes \cheetah{} cannot report false sharing problems caused by the heap allocator.  
++However, we argue that this problem should be fixed by using a modern heap allocator like Hoard~\cite{Hoard}. 
+ 
+ \paragraph{Implementation} 
+-To use its custom heap, \cheetah{} intercepts all memory allocations and deallocations. \cheetah{} initializes the heap before an application enters \texttt{main} routine, by putting the initialization routine into the constructor attribute. \cheetah{} maintains two different heaps, one for the application and one for internal uses. For both heaps, \cheetah{} manages objects based on the unit of {\it power of two}. For each memory allocation from the application, \cheetah{} saves the information of callsite and size, which helps \cheetah{} to precisely report the line information of falsely-shared objects.  
++To use its custom heap, \cheetah{} intercepts all memory allocations and deallocations. \cheetah{} initializes the heap before the application enters \texttt{main} routine, by putting the initialization routine into the constructor attribute. \cheetah{} maintains two different heaps, where all memory usage of the application will be satisfied from its application heap and other memory usage will be allocated from its internal heap. For both heaps, \cheetah{} manages objects based on the unit of {\it power of two}. For each memory allocation from the application, \cheetah{} saves the information of callsite and size by adding them to an object header, just before each object. This helps \cheetah{} to precisely report the line information of falsely-shared objects.  
+ %heap and globals. 
+ %Two huge arrays. 
+ %\cheetah{} keeps track of memory accesses of global variables and objects of the application heap using the shadow memory technique.
+-\Cheetah{} allocates two large arrays (using \texttt{mmap}) to keep track of the number of writes and detailed access information on each cache line. For each memory access, \cheetah{} uses the bit shift to compute the index of cache line and locates the placement of its corresponding unit quickly. 
++\Cheetah{} allocates two large arrays (by using \texttt{mmap}) to keep track of the number of writes and detailed access information on each cache line. For each memory address, \cheetah{} uses the bit shift to compute the index of cache line and locates the placement of its corresponding array quickly. 
+ 
+ 
+ \subsection{Computing Cache Invalidations}
+ \label{sec:computeinvalidations}
+ 
+-%Section~\ref{sec:detect} discusses a general rule to compute the number of cache invalidations. 
+-Prior work of Zhao et. al. proposed a method based on the ownership of cache lines to compute the cache invalidations: when a thread updates an object owned by others, this access causes an cache invalidation and resets the owner to the current thread~\cite{qinzhao}. But this approach cannot easily scale to more than 32 threads because of excessive memory consumption, since it needs a bit to track the ownership of a thread.  
++Section~\ref{sec:detect} discusses a general rule to compute the number of cache invalidations. Prior work of Zhao et. al. proposed a method based on the ownership of cache lines: when a thread updates an object that it does not own, it will cause cache invalidations and reset the owner to the current thread~\cite{qinzhao}. However, their approach cannot easily scale to more than 32 threads because of excessive memory consumption, because every 32-bit word can only track 32 threads.  \todo{I don't understand this. Why 32 threads will cause more memory. Please clarify this.}
+ 
+-%To track the number of cache invalidations,  \Cheetah{} keeps a counter for every cache line.  
+-To address this problem, \Cheetah{} maintains a two-entry table ($T$) for each cache line ($L$), with eight words in total. In this table, each entry has two fields, thread ID and access type (read or write). It computes the invalidations according to the rule described in Section~\ref{sec:detect}. In case of a cache invalidation, the current access (write) will be added into the corresponding table. Thus, each table always has an entry. More specifically, \cheetah{} checks possible cache invalidations as follows.
++To address this problem, \Cheetah{} keeps a two-entry table ($T$) for each cache line ($L$), \todo{avoid using borrowed idea from other. it can reduce the novelty of the paper. We can put a thorough comparison with Predator in the related work section.} which is borrowed from prior work Predator~\cite{Predator}. Each entry of this table has two fields,   thread ID and access type (read or write). \Cheetah{} also keeps a counter for every cache line that indicates the number of cache invalidations on this cache line.  
+ 
+-%a write access from a thread different with existing entries can cause a cache invalidation. When there is a cache invalidation, 
++According to the basic rule that is described in the beginning of Section~\ref{sec:detect}, only a write access that is from a different thread with existing entries can cause a cache invalidation. When there is a cache invalidation, the current access (write) flushes the table and is added into the corresponding table ($T$). Thus, a table always has an entry except in the beginning. More specifically, \cheetah{} checks possible cache invalidations as follows.
+ \begin{itemize}
+ \item
+ For each read access, \cheetah{} will decide whether to record this entry. If the table $T$ is not full and the existing entry is coming from a different thread (with a different ID), \cheetah{} will record this read access in the table.
+   
+   \item
+-  For each write access, \cheetah{} will decide whether this access incurs an invalidation. If the table is already full, it will lead to a cache invalidation since at least an existing entry is from a different thread (assumption 1). If the table is not full (and not empty), a write access will incur a cache invalidation only if the existing entry is from a different thread. \cheetah{} does nothing if this write is the same as the existing entry. 
++  For each write access, \cheetah{} will decide whether there is an invalidation. If the table is already full, this write access will lead to a cache invalidation because at least one existing entry is issued by a different thread (running on a different core, assumption 1). If the table is not full (and not empty), this write access will lead to a cache invalidation only if the existing entry is from a different thread. \cheetah{} does nothing if this write is the same as the existing entry. 
+   
+ \end{itemize}
+      
+@@ -92,13 +89,12 @@
+ % How we 
+ \label{sec:report}
+ 
+-\Cheetah{} reports false sharing correctly and precisely, either at the end of programs or receiving instructions from users.  
++\Cheetah{} reports false sharing correctly and precisely. \Cheetah{} invokes the process of checking and reporting false sharing problems, either at the end of programs or receiving the instructions from users through the \texttt{SIGUSR2} signal.  \todo{I think it is kind of too detail about the implementation. No one care about the SIGUSR2.}
+ 
+ \paragraph{Correct Detection.} \Cheetah{} keeps track of word-based (four bytes) memory accesses on susceptible cache lines: how many reads or writes issued by a specific thread on each word. When more than one thread access a word, \Cheetah{} marks this word to be \emph{shared}. By identifying accesses on each word on a susceptible cache line, we can easily differentiate false sharing from true sharing. Word-based information can also help diagnose false sharing problems in more detail, which helps programmers to decide how to pad a problematic data structure in order to avoid false sharing. Because it is possible for a thread, particularly the main thread, to allocate an object and initialize it before being accessed by other threads, \cheetah{} only tracks the behavior of memory accesses inside parallel regions.
+ % to avoid this problem.
+ 
+-\paragraph{Precise Detection.} \Cheetah{} reports precise information for global variables and heap objects that are involved in false sharing. For global variables, \Cheetah{} reports names and addresses by searching through the ELF symbol table. For heap objects, \Cheetah{} reports the lines of code for their allocation sites. Thus, \Cheetah{} intercepts all memory allocations and de-allocations to obtain the whole call stack. \cheetah{} does not monitor stack variables because they are normally accessed by their hosting threads, without sharing. 
+-%\todo{Check the last sentence I added is correct or not.} 
++\paragraph{Precise Detection.} \Cheetah{} reports precise information for global variables and heap objects that are involved in false sharing. For global variables, \Cheetah{} reports names and addresses by searching through the ELF symbol table. For heap objects, \Cheetah{} reports the lines of code for allocating these objects. Thus, \Cheetah{} intercepts all memory allocations and de-allocations to obtain the whole call stack. For stack variables, \cheetah{} does not monitor them because threads usually access their own stack data, without sharing. \todo{Check the last sentence I added is correct or not.} 
+ %During the real implementation, we tried to keep the overhead of getting the callsite stack as little as possible. \cheetah{} utilizes a global hash table to save those known callsite stack. The combination of ``rip'' (instruction pointer) and ``stack offset'' is considered as the key of this global hash table. If the combination of these two values (as the key) have existed in the global hash table, we simply copied the saved callsite stack to a new object. Otherwise, backtrace() is called to fetch the callstack.  
+ 
+  

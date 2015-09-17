@@ -66,7 +66,7 @@ Based on this, \cheetah{} assesses the predicted runtime of a thread --- $Predic
 
 In the end, \cheetah{} assesses how fixing a false sharing instance will change the performance of the application. 
 
-Actually, increasing the performance of a thread may not increase the final performance if this  thread is not in the critical path.  
+Actually, improving the performance of a thread may not increase the final performance if this thread is not in the critical path.  
 To simplify the prediction and verify our idea, \cheetah{} currently focuses on applications with the normal fork-join model, shown as Figure~\ref{fig:forkjoinmodel}. This model is the most important and widely used model in reality. All applications that we have evaluated in this paper utilizes this fork-join model. The performance assessment will be more complicated if nested threads exist inside an application. 
 
 

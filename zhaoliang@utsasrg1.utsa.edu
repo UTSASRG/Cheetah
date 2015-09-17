@@ -1,0 +1,189 @@
+diff -Nur new/discussion.tex bak/discussion.tex
+--- new/discussion.tex	2015-08-21 10:25:41.000000000 -0500
++++ bak/discussion.tex	2015-08-21 10:21:55.000000000 -0500
+@@ -1,2 +1,9 @@
++\section{Discussion}
++
+ \label{sec:discuss}
+ 
++\subsection{Performance Overhead}
++
++\Cheetah{}, with the support of lightweight IBS, can identify cache line false sharing efficiently and effectively. However, its runtime overhead can still be as high as 10-20\%, mainly due to the mechanism of AMD IBS. AMD IBS samples every kind of instructions, including arithmetic instructions (e.g., add, sub, mul, and div) and logic instructions (e.g., comp and test), which are useless for analyzing false sharing. Instead, \cheetah{} only requires sampling memory accesses. Because of this hardware limitation, \cheetah{} needs to filter out useless samples with a software method. Such software method needs \cheetah{} to receive samples and check corresponding bits to test if these samples access memory or not; these processes incur high overhead. Hopefully, the hardware can overcome this limitations in the future by only sampling memory loads and stores.
++
++\subsection{Future Work}
+diff -Nur new/evaluation.tex bak/evaluation.tex
+--- new/evaluation.tex	2015-08-21 10:25:41.000000000 -0500
++++ bak/evaluation.tex	2015-08-21 10:21:55.000000000 -0500
+@@ -1,17 +1,26 @@
++\section{Evaluation}
+ \label{sec:eval}
+ 
+-\begin{figure*}[htbp]
+-\centering
+-\label{fig:overhead}
+-\includegraphics[width=2\columnwidth]{figure/overhead}
+-\caption{Runtime overhead incurred by \Cheetah{}. All Rodinia benchmarks are run with 48 threads, while all Phoenix benchmarks are run with 16 threads. We exclude any benchmark with small execution time. The time is averaged on three executions.}
+-\end{figure*}
++We evaluate \cheetah{} on an AMD Opteron machine, which has 48 cores and 128 GB memory, each core with the 1.6 GHz frequency. We perform experiments on two well-known benchmark suites: Phoenix~\cite{} and Rodinia~\cite{}. These benchmarks cover popular threading models, such as pthread~\cite{} and OpenMP~\cite{}. Table~\ref{} shows the detailed description of each benchmark. We use gcc-4.6 to compile these benchmarks, with {\tt -O2} option. For Phoenix benchmarks, we run them using 16 threads because these benchmarks often have too small working set. For Rodinia benchmarks, we run them with 48 threads. Since \cheetah{} is based on the sampling technique, running with more threads will generally runs too fast. We need to run a benchmark at least 5 second to get enough statistical samples. \\
+ 
+-We evaluate \cheetah{} on an AMD Opteron Magny-Cours machine, which has 48 1.6 GHz cores and 128 GB memory. We test multithreaded programs from two well-known benchmark suites: Phoenix~\cite{} and Rodinia~\cite{}. These benchmarks cover popular threading models, such as pthread~\cite{} and OpenMP~\cite{}. Table~\ref{} shows the detailed description of each benchmark. We use gcc 4.6 to compile these benchmarks with {\tt -O2} option. For Phoenix benchmarks, we run them with 16 threads because these benchmarks often have small working sets. For Rodinia benchmarks, we run them with 48 threads. As \cheetah is based sampling, a benchmark should run long enough (at least 5 second) to get enough statistical samples. Otherwise, the code complete quickly and no one cares about the false sharing. 
++\sloppy{}
++Our evaluation will answer the following questions in order as follows. 
+ 
+-For \cheetah{}, we configure with instruction-based sampling at a sampling period of 64K instructions (sample one instruction for every 64K instructions). Figure~\ref{} shows the runtime overhead incurred by \cheetah{}. From the figure, we can see that \cheetah{} incurs low runtime overhead, less than 3\% on average. Moreover, \cheetah{} identifies two false sharing problems in two benchmarks: Pheonix Linear\_Regression and Rodinia StreamCluster. In the remaining of this section, we discuss these two benchmarks separately: we verify the false sharing code and evaluate the accuracy of the assessment of optimization potentials. Finally, we study the false sharing that \cheetah{} does not detect in these benchmarks and verify that they have negligible impact to the overall program execution. 
++\begin{itemize}
++\item How effective can \cheetah{} find existing false sharing problems and help users to fix them? 
+ 
+-\subsection{Linear\_Regression}
++\item What is the performance overhead of \cheetah{}? 
++
++\item How is the precision of assessment? 
++
++\end{itemize}
++
++\subsection{Effectiveness}
++
++\cheetah{} identifies two false sharing problems in two benchmarks: Pheonix Linear\_Regression and Rodinia StreamCluster. In the remaining of this section, we discuss these two benchmarks separately: we verify the false sharing code. 
++%Finally, we study the false sharing that \cheetah{} does not detect in these benchmarks and verify that they have negligible impact to the overall program execution. 
++
++\subsubsection{Linear\_Regression}
+ Figure~\ref{fig:lr} shows the output of \cheetah{}, which points out that array {\tt tid\_args} with the structure type {\tt lreg\_args} incurs a severe false sharing problem. The reason for this is that ...
+ 
+ To address the problem, we pad the structure {\tt lreg\_args} with extra bytes to force all threads to access different cache lines. The optimization lead to a 5.7$\times$ speedup, which exactly matches the assessment 5.76$\times$ given by \cheetah{}.
+@@ -56,7 +65,7 @@
+ \label{lr:code}
+ \end{figure}
+ 
+-\subsection{StreamCluster}
++\subsubsection{StreamCluster}
+ 
+ Figure~\ref{fig:sc} shows the output of StreamCluster. It identifies one false sharing. Correlating back to the source code, we find that ..
+ 
+@@ -78,8 +87,7 @@
+ \end{minipage}
+ \end{figure}
+ 
+-
+-\subsection{Missing False Sharing Problems}
++\subsubsection{Missing False Sharing Problems}
+ 
+ \begin{figure}[htbp]
+ \centering
+@@ -90,6 +98,18 @@
+ 
+ As we described in Section~\ref{}, \cheetah{} may omit false sharing occurring in the code because of its sampling feature. In this section, we show that the false sharing \cheetah{} misses has negligible performance impact to the whole program execution.  For this purpose, we refer to all the false sharing identified by Predator~\cite{} in both Phoenix and PARSEC benchmarks. These false sharing problems include false sharing occurs in histogram, reverse\_index, and word\_count. Figure~\ref{} shows the performance speedups after we fix all the false sharing. Experimental results show that all these benchmark achieve less than 0.1\%. 
+ 
+-\subsection{Discussions}
++\subsection{Performance Overhead}
++\begin{figure*}[htbp]
++\centering
++\label{fig:overhead}
++\includegraphics[width=2\columnwidth]{figure/overhead}
++\caption{Runtime overhead incurred by \Cheetah{}. All Rodinia benchmarks are run with 48 threads, while all Phoenix benchmarks are run with 16 threads. We exclude any benchmark with small execution time. The time is averaged on three executions.}
++\end{figure*}
++
++
++For \cheetah{}, we configure with instruction-based sampling at a sampling period of 64K instructions (sample one instruction for every 64K instructions). Figure~\ref{} shows the runtime overhead incurred by \cheetah{}. From the figure, we can see that \cheetah{} incurs low runtime overhead, less than 3\% on average.
++
++\subsection{Assessment Precision}
++
++
+ 
+-\Cheetah{}, with the support of lightweight IBS, can identify cache line false sharing efficiently and effectively. However, its runtime overhead can still be as high as 10-20\%, mainly due to the mechanism of AMD IBS. AMD IBS samples every kind of instructions, including arithmetic instructions (e.g., add, sub, mul, and div) and logic instructions (e.g., comp and test), which are useless for analyzing false sharing. Instead, \cheetah{} only requires sampling memory accesses. Because of this hardware limitation, \cheetah{} needs to filter out useless samples with a software method. Such software method needs \cheetah{} to receive samples and check corresponding bits to test if these samples access memory or not; these processes incur high overhead. Hopefully, the hardware can overcome this limitations in the future by only sampling memory loads and stores.
+diff -Nur new/main.tex bak/main.tex
+--- new/main.tex	2015-08-21 10:25:41.000000000 -0500
++++ bak/main.tex	2015-08-21 10:21:55.000000000 -0500
+@@ -225,14 +225,16 @@
+ %\section{Optimization}
+ %\input{optimization}
+ %\input{implementation}
++<<<<<<< HEAD
++
++=======
++>>>>>>> 23a4283687070616be567faa164bb27867e1b0ac
+ 
+-\section{Evaluation}
+ \input{evaluation}
+ 
+ %\section{Discussion}
+-%\input{discussion}
++\input{discussion}
+ 
+-\section{Related Work}
+ \input{relatedwork}
+ 
+ % eliminate global lock
+diff -Nur new/predict.tex bak/predict.tex
+--- new/predict.tex	2015-08-21 10:25:41.000000000 -0500
++++ bak/predict.tex	2015-08-21 10:21:55.000000000 -0500
+@@ -6,18 +6,6 @@
+ 
+ To resolve this problem, \cheetah{} makes the first attempt to quantitatively assess the potential performance gain of fixing a particular false sharing problem. So that programmers can focus on severe problems only, avoiding unnecessary manual effort.
+ 
+-Assessing the performance impact is a very challenging topic. \todo{Currently we do not find much related work~\cite{}, not to mention the impact of false sharing problems}. False sharing occurs when more than two threads are accessing the same cache line. Thus, to assess the performance impact of false sharing problems, we have to monitor the execution of different threads. For example, if a thread is not in the critical path of the performance, then fixing false sharing problems in this thread will not have an observed impact on the final performance. The assessment can become even more complicated if there are some nested threads in the application.
+-
+-To simplify our prediction and verify the idea, \cheetah{} focuses on its assessment on the normal fork-join model, which is the most important and widely used model. A basic example of fork-join model is shown in  Figure~\ref{fig:forkjoinmodel}. All applications that we evaluated in this paper, including all benchmarks in phoenix and parsec benchmarks suite, utilizes this fork-join model. 
+-
+-\begin{figure*}[ht!]
+-\begin{center}
+-\includegraphics[width=6.5in]{figure/forkjoin}
+-\end{center}
+-\caption{The fork-join model that \Cheetah{} currently focuses on to assess the impact of false sharing instances. 
+-\label{fig:forkjoinmodel}}
+-\end{figure*}
+-
+ \cheetah{}'s assessment is based on the following observations:
+ 
+ \begin{itemize}
+@@ -90,5 +78,42 @@
+ \subsection{Impact on the Application}
+ \label{sec:impactapp}
+ 
++After getting the predicted execution time--$PredictRT_{thread}$-- after fixing a false sharing problem, we will assess how it will finally change the performance of the application. 
++
++This a very challenging topic.  We have to monitor the execution of different threads. For example, if a thread is not in the critical path of the performance, then fixing false sharing problems in this thread will not have an observed impact on the final performance. The assessment can become even more complicated if there are some nested threads in the application. 
++
++To simplify our prediction and verify the idea, \cheetah{} focuses on its assessment on the normal fork-join model, which is the most important and widely used model. A basic example of fork-join model is shown in  Figure~\ref{fig:forkjoinmodel}. All applications that we evaluated in this paper, including all benchmarks in phoenix and parsec benchmarks suite, utilizes this fork-join model. 
++
++\begin{figure*}[ht!]
++\begin{center}
++\includegraphics[width=6in]{figure/forkjoin}
++\end{center}
++\caption{The fork-join model that \Cheetah{} currently focuses on to assess the impact of false sharing instances. 
++\label{fig:forkjoinmodel}}
++\end{figure*}
++
++In order to identify whether an execution belongs to the fork-join model as Figure~\ref{fig:forkjoinmodel}, \cheetah{} has to keep track of creation creations and thread joins. For example, the main thread will enter the parallel phase I after \cheetah{} intercepts the first thread creation. The execution will leave the parallel phase I after all children threads that are created has been joined successfully. 
++
++\Cheetah{} collects the execution time of different serial and parallel phases using RDTSC (ReaD-Time Stamp Counter) on X86 machines. The difference between the stopping point and the starting point will be considered as the length of a phase. 
++
++After having the information of execution time of different phases, \cheetah{} can predict the final performance impact on the application. The basic idea is to predict the execution time of different threads as described in Section~\ref{sec:impactthread}, then recompute the length of each phase and the total time. After that, we will compute the final performance improvement using the following equation. 
++
++\cheetah{} will compute the potential performance improvement based on EQ.(\ref{eq:improvement}), where runtime is denoted by $RT$.
++
++\begin{equation}
++\label{eq:improvement}
++Perf_{improve}=RT_{actual}/RT_{predict}
++\end{equation}
++
++We will uses an example to show that. For example, there is a false sharing problem that will involved in the $T1$ and $T2$ of Figure~\ref{fig:forkjoinmodel}, but not other threads.  We will assess the possible runtime of $PredictRT_{T1}$ and $PredictRT_{T2}$. Then we checked that whether these predicted runtime will affect the runtime of parallel phase I by checking whether these two runtime are less than the runtime of $T3$ at first. If it won't, then fixing the false sharing problem won't affect the final performance. 
++Otherwise, we have to recompute the length of parallel phase I, while the length of other phases will keep the same. By doing that, we will get a new runtime for the application. Using the EQ.(\ref{eq:improvement}), we can compute the potential performance improvement of this application by fixing the false sharing problems related to the thread $T1$ and $T2$. 
++
++Although  \cheetah{} only focuses on the fork-join model, the idea of predicting false sharing impact can be applied to other execution models, but with more complexity. We further verified the precision of our assessment in Section~\ 
++
++
++
++
++
++
+ 
+ 
+diff -Nur new/relatedwork.tex bak/relatedwork.tex
+--- new/relatedwork.tex	2015-08-21 10:25:41.000000000 -0500
++++ bak/relatedwork.tex	2015-08-21 10:21:55.000000000 -0500
+@@ -1,3 +1,5 @@
++\section{Related Work}
++
+ \label{sec:relatedwork}
+ In this section, we review existing lightweight techniques for identifying memory bottlenecks and the tools specifically focusing on analyzing false sharing issues.
+ 
