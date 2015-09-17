@@ -7,15 +7,15 @@ The evaluation will answer the following research questions in order as follows.
 \begin{itemize}
 \item What is the performance overhead of \cheetah{}? (\ref{sec:perf})
 
-\item How effective can \cheetah{} find known false sharing problems? How helpful are outputs in fixing false sharing problems?  (\ref{sec:effectiveness})
+\item How effective can \cheetah{} detect false sharing problems? How helpful are outputs in fixing false sharing problems?  (\ref{sec:effectiveness})
 
 \item How is the precision of assessment on each false sharing instance?  (\ref{sec:precision})
 
 \end{itemize}
 
-\paragraph{Experimental Setup.} We evaluate \cheetah{} on an AMD Opteron machine, which has 48 1.6 GHz cores, 64 KB private L1 data cache, 512 KB private L2 cache, 10 MB shared L3 cache, and 128 GB memory. We use gcc-4.6 with {\tt -O2} option to compile all applications. Since the machine is a NUMA machine and performance varies with different scheduling policy, we bind the threads to cores for consistent performance.   
+\paragraph{Experimental Setup.} We evaluate \cheetah{} on an AMD Opteron machine, which has 48 1.6 GHz cores, 64 KB private L1 data cache, 512 KB private L2 cache, 10 MB shared L3 cache, and 128 GB memory. We use gcc-4.6 with {\tt -O2} option to compile all applications. Since the machine is a NUMA machine and the performance may vary with different scheduling policy, we bind the threads to cores for the purpose of consistent performance.   
 
-\paragraph{Evaluated Applications.} As prior work~\cite{Sheriff, Predator, qinzhao, mldetect}, we perform experiments on two well-known benchmark suites, Phoenix~\cite{phoenix-hpca} and PARSEC~\cite{parsec}. We intentionally use 16 threads in order to run applications a little longer, since \cheetah{} needs enough samples to detect false sharing problems. If that is still not enough, we change the source code or use a larger input so that every benchmark will run at least 5 seconds to get enough statistical samples.
+\paragraph{Evaluated Applications.} As prior work~\cite{Sheriff, Predator, qinzhao, mldetect}, we perform experiments on two well-known benchmark suites, Phoenix~\cite{phoenix-hpca} and PARSEC~\cite{parsec}. We intentionally use 16 threads in order to run applications a little longer, since \cheetah{} needs enough samples to detect false sharing problems. If that is still not enough, we change the source code by adding a loop or use a larger input so that every benchmark will run at least 5 seconds to collect enough samples.
 
 \subsection{Performance Overhead}
 \label{sec:perf}
@@ -31,7 +31,7 @@ We show the average runtime overhead of \cheetah{} in Figure~\ref{fig:overhead}.
 
 During the evaluation, we configure \cheetah{} with the sampling frequency at 64K instructions. Thus, for every 64K instructions, the trap handler will be notified once so that \cheetah{} can collect the information of each sampled memory access. Because of \cheetah{}'s very coarse sampling rate, we should let programs to run sufficiently long enough. 
 
-The performance overhead of \cheetah{} mainly comes from every sampled memory access and each thread creation. For each sample, we will collect information about this memory access, such as the type of access (read or write), the number of cycles, and update corresponding data structure such as the history table of its corresponding cache line. \cheetah{} also intercepts every thread creation to  setup the PMU unit, get the timestamp and update the phase information. The setting of the PMU registers introduces non-negligible overhead since it invokes six pfmon APIs and six system calls. For applications with a big number of threads, including \texttt{kmeans} (with 224 threads, running around 14 seconds) and \texttt{x264} (with 1024 threads, running around 40 seconds), we observe that \cheetah{} introduces significant more performance overhead than other threads. For other applications, \cheetah{} introduces less than 12\% performance overhead and 4\% overhead on average (if these two applications are excluded).  
+The performance overhead of \cheetah{} mainly comes from every sampled memory access and each thread creation. For each sampled access, we will collect information such as the type of access (read or write), the number of cycles, and update corresponding data structure such as the history table of its cache line. \cheetah{} also intercepts every thread creation to setup the PMU unit, get the timestamp and update the phase information. The setting of the PMU registers introduces non-negligible overhead since it invokes six pfmon APIs and six additional system calls. For applications with a big number of threads, including \texttt{kmeans} (with 224 threads, running around 14 seconds) and \texttt{x264} (with 1024 threads, running around 40 seconds), we observe that \cheetah{} introduces significantly higher performance overhead than other threads. For other applications, \cheetah{} introduces less than 12\% performance overhead, with 4\% overhead on average if these two applications are excluded.  
 
 %\todo{Check the creation of threads for kmeans and x264. Initializing IBS registers for every thread adds significant performance overhead. Kmeans 224 threads in 14 seconds. 1023 threads in 40 seconds.  }
 
@@ -113,7 +113,7 @@ for (i = 0; i < args->num_elems; i++)
 \subsubsection{Case Study: streamcluster}
 
 %Figure~\ref{fig:sc} shows the output of StreamCluster. 
-We do not show the report results of streamcluster because of space limit. For streamcluster, every thread will update the work\_mem object concurrently, allocated in line 985 of the file \texttt{streamcluster.cpp}. The authors have already added some padding to avoid false sharing. However, the size of cache line (as a macro) is set to be 32 bytes, which is smaller than the size of actual cache line used in our experimental machine. Thus, streamcluster will still has a significant false sharing problem because of this reason. The performance impact of fixing false sharing problems inside is further discussed in Section~\ref{sec:precision}. 
+We do not show the report results of streamcluster because of space limit. For streamcluster, every thread will update the work\_mem object concurrently, allocated at line 985 of the \texttt{streamcluster.cpp} file. The authors have already added some padding to avoid false sharing. However, the size of cache line (as a macro) is set to be 32 bytes, which is smaller than the size of actual cache line used in our experimental machine. Thus, streamcluster will still has a significant false sharing problem. The performance impact of fixing false sharing problems inside is further discussed in Section~\ref{sec:precision}. 
 
 
 \subsubsection{Comparing with State-of-the-art}
@@ -134,12 +134,12 @@ Comparing with the state-of-the-art tool--Predator, \cheetah{} misses false shar
 \subsection{Assessment Precision}
 \label{sec:precision}
 
-Different with all existing tools, \cheetah{} can assess the performance impact of false sharing problems so that programmers can focus only on important problems. This section evaluates the precision of assessment. 
+Different with all existing tools, \cheetah{} is the first tool that can assess the performance impact of false sharing problems. This section evaluates the precision of assessment. 
 
-We evaluate the precision of assessment on two applications, \texttt{linear\_regression} and \texttt{streamcluster}, since they are observed to have serious false sharing problems. We listed the results in Table~\ref{tbl: precision}. In this table, \texttt{linear\_regression} is abbreviated as ``linear\_reg''.  We evaluate these two applications when the number of threads is equal to 16, 8, 4, and 2 correspondingly. We list the predicted performance impact in the ``Predict'' column and the actual improvement in the ``Real'' column of the table. The last column of this table lists the difference between the predicted improvement and the real improvement. If the number is larger than 0, the predicted performance improvement is less than the real improvement. Otherwise, it is the opposite. 
+We evaluate the precision of assessment on two applications, \texttt{linear\_regression} and \texttt{streamcluster}, since they are observed to have serious false sharing problems. We listed the results in Table~\ref{tbl: precision}. In this table, \texttt{linear\_regression} is abbreviated as ``linear\_reg''.  We evaluate these two applications when the number of threads is equal to 16, 8, 4, and 2 correspondingly. We list the predicted performance impact in the ``Predict'' column and the actual improvement in the ``Real'' column of the table. The last column (``Diff'') of this table lists the difference between the predicted improvement and the real improvement. If the number is larger than 0, the predicted performance improvement is less than the real improvement. Otherwise, it is the opposite. 
 %The difference is calculated by dividing the difference by the real improvement.  
 
-Results of Table~\ref{tbl: precision} show that \cheetah{} can perfectly assessment the performance impact of false sharing in every case, with less than 10\% difference for every evaluated execution. %Relying on the assessment, programmers do not have to spend time on trivial false sharing problems any more. 
+Table~\ref{tbl: precision} shows that \cheetah{} can perfectly assess the performance impact of false sharing in every case, with less than 10\% difference for every evaluated execution. %Relying on the assessment, programmers do not have to spend time on trivial false sharing problems any more. 
 \emph{According to this novel assessment of \cheetah{}, programmers may save huge amount of manual effort spending unnecessarily on applications with trivial false sharing problems}. 
 
 \begin{table}
