@@ -15,7 +15,7 @@ To address this challenge, \cheetah{} proposes a simple rule to track cache inva
  
 \end{itemize}
 
-Assumption 1 is reasonable because thread over-subscription is generally rare for computation intensive programs. This assumption may over-estimate the number of cache invalidations, if multiple threads are actually scheduled to the same physical core or different cores sharing part of cache hierarchy. Under this circumstance, Assumption 1 shows the most number of cache invalidations for a given false sharing instance. With this assumption, \cheetah{} does not have to track thread-to-core mapping or know the actual cache hierarchy. 
+Assumption 1 is reasonable because thread over-subscription is generally rare for computation intensive programs. This assumption may over-estimate the number of cache invalidations, if multiple threads are actually scheduled to the same physical core or different cores sharing part of cache hierarchy. Under this circumstance, Assumption 1 shows the largest number of cache invalidations for a given false sharing instance. With this assumption, \cheetah{} does not have to track thread-to-core mapping or know the actual cache hierarchy. 
 
 Assumption 2 further defines the behavior related to cache eviction and invalidation. 
 %According to assumption 2, since the size of a cache is infinite, data will be ways kept in the cache.   
@@ -29,10 +29,10 @@ In the remaining of this section, we elaborate how we track memory accesses in S
 \subsection{Sampling Memory Accesses}
 \label{sec:perfcounter}
 
-According to the basic rule described above, it is important to track memory accesses of different threads in order to compute the number of cache invalidations on each cache line. Software based approaches may introduce higher than $5\times$ performance overhead~\cite{Predator, qinzhao}. This high overhead can block people from using these tools in real deployment.
+According to the basic rule described above, it is important to track memory accesses of different threads in order to compute the number of cache invalidations on each cache line. Software-based approaches may introduce higher than $5\times$ performance overhead~\cite{Predator, qinzhao}. This high overhead can block people from using these tools in real deployment.
 
 %The state-of-the-art work \Predator{} leverages the compiler instrumentation to insert function calls before every memory access~\cite{Predator}. However, this approach introduces more than $5\times$ performance overhead by instrumenting every memory access. Moreover, \Predator{} has to re-compile applications, which needs the availability of source code. \Predator{} is not desirable for legacy applications without the source code, or real deployment that is sensitive to performance. 
-\cheetah{} significantly reduces the performance overhead by leveraging PMU-based sampling mechanisms, such as AMD instruction-based sampling (IBS)~\cite{AMDIBS:07} and Intel precise event-based sampling (PEBS)~\cite{IntelArch:PEBS:Sept09}, pervasively available in modern CPU architectures. For each sample, PMU distinguishes whether it is a memory read or write, captures the memory address touched by the sampled memory access, and records the thread ID that triggers this sample. Those raw data will be utilized to analyze whether the sampled access incurs a cache invalidation or not, based on the basic rule described in Section~\ref{sec:detect}.
+\cheetah{} significantly reduces the performance overhead by leveraging PMU-based sampling mechanisms, such as AMD instruction based sampling (IBS)~\cite{AMDIBS:07} and Intel precise event based sampling (PEBS)~\cite{IntelArch:PEBS:Sept09}, pervasively available in modern CPU architectures. For each sample, PMU distinguishes whether it is a memory read or write, captures the memory address touched by the sampled memory access, and records the thread ID that triggers this sample. Those raw data will be utilized to analyze whether the sampled access incurs a cache invalidation or not, based on the basic rule described in Section~\ref{sec:detect}.
 
 %These information is enough to compute the number of cache invalidations based on the basic rule that is described in Section~\ref{sec:basicidea}. 
 Since PMU only samples one memory access out of a specified number, typically with a sampling frequency of tens of samples per second per thread, it doesn't pose significant performance overhead. Besides that, using PMU-based sampling does not need to instrument source or binary code explicitly, thus providing a non-intrusive way to monitor memory references. \cheetah{} shows that the PMU-based sampling, even with sparse samples (one out of 64K), can identify false sharing with significant performance impact.
@@ -47,10 +47,10 @@ In order to sample memory accesses, \cheetah{} programs the PMU registers to tur
 \subsection{Locating Cache Line}
 \label{sec:shadow}
 
-For each sampled memory access, \cheetah{} will decide whether this access causes a cache invalidation or not and records the detailed information about this access. For this purpose, \cheetah{} should quickly locate an access's related cache line. \Cheetah{} also utilizes the shadow memory mechanism to speed up this locating procedure~\cite{qinzhao, Predator}. 
+For each sampled memory access, \cheetah{} will decide whether this access causes a cache invalidation or not, and record the detailed information about this access. For this purpose, \cheetah{} should quickly locate an access's related cache line. \Cheetah{} also utilizes the shadow memory mechanism to speed up this locating procedure~\cite{qinzhao, Predator}. 
 %Shadow memory has been utilized extensively in different fields, such as detecting concurrency bugs~\cite{Harrow:2000:RCM:645880.672080, helgrind, 404681, Savage:1997:EDD:268998.266641}, tracking information flow or data flow~\cite{Cheng:2006:TEF:1157733.1157903, Newsome05dynamictaint, Qin:2006:LLP:1194816.1194834}, or detecting memory errors or others~\cite{qinzhao, Hastings91purify:fast, Seward:2005:UVD:1247360.1247362, Narayanasamy:2006:ALO:1140277.1140303}.  
 % FIXME, if we need less citations. 
-To utilize the shadow memory mechanism, we should determine the range of heap memory, which is difficult to know beforehand if using the default heap. Thus, \cheetah{} builds its custom heap based on Heap Layers~\cite{Berger:2001:CHM:378795.378821}. \cheetah{} pre-allocates a fixed size of memory block (using \texttt{mmap}) and satisfies all memory allocations from that. \cheetah{} adapts the per-thread heap organization used by Hoard so that two objects in the same cache line will never be allocated to two different threads~\cite{Hoard}. This design prevents inter-objects false sharing, but also makes \cheetah{}  cannot report problems possibly caused by the default heap allocator.  
+To utilize the shadow memory mechanism, we should determine the range of heap memory, which is difficult to know beforehand if using the default heap. Thus, \cheetah{} builds its custom heap based on Heap Layers~\cite{Berger:2001:CHM:378795.378821}. \cheetah{} pre-allocates a fixed-size memory block (using \texttt{mmap}) and satisfies all memory allocations from that. \cheetah{} adapts the per-thread heap organization used by Hoard so that two objects in the same cache line will never be allocated to two different threads~\cite{Hoard}. This design prevents inter-objects false sharing, but also makes \cheetah{}  unable to report problems possibly caused by the default heap allocator.  
 %However, we argue that this problem should be fixed by using a modern heap allocator like Hoard~\cite{Hoard}. 
 
 \paragraph{Implementation} 
@@ -58,17 +58,17 @@ To use its custom heap, \cheetah{} intercepts all memory allocations and dealloc
 %heap and globals. 
 %Two huge arrays. 
 %\cheetah{} keeps track of memory accesses of global variables and objects of the application heap using the shadow memory technique.
-\Cheetah{} allocates two large arrays (using \texttt{mmap}) to keep track of the number of writes and detailed access information on each cache line. For each memory access, \cheetah{} uses the bit shift to compute the index of cache line so that it can quickly locate its corresponding cache line for every sampled memory access. 
+\Cheetah{} allocates two large arrays (using \texttt{mmap}) to keep track of the number of writes and detailed access information on each cache line. For each memory access, \cheetah{} uses bit shifting to compute the index of its cache line. 
 
 
 \subsection{Computing Cache Invalidations}
 \label{sec:computeinvalidations}
 
 %Section~\ref{sec:detect} discusses a general rule to compute the number of cache invalidations. 
-Prior work of Zhao et. al. proposed a method based on the ownership of cache lines to compute the number of cache invalidations: when a thread updates an object owned by others, this access causes an cache invalidation and resets the owner to the current thread~\cite{qinzhao}. But this approach cannot easily scale to more than 32 threads because of excessive memory consumption, since it needs a bit for every thread to track the ownership.  
+Prior work of Zhao et. al. propose a method that is based on the ownership of cache lines to compute the number of cache invalidations: when a thread updates an object owned by others, this access causes an cache invalidation and resets the owner to the current thread~\cite{qinzhao}. But this approach cannot easily scale to more than 32 threads because of excessive memory consumption, since it needs one bit for every thread to track the ownership.  
 
 %To track the number of cache invalidations,  \Cheetah{} keeps a counter for every cache line.  
-To address this problem, \Cheetah{} maintains a two-entry table ($T$) for each cache line ($L$), with eight words in total. In this table, each entry has two fields, thread ID and access type (read or write). It computes the invalidations according to the rule described in Section~\ref{sec:detect}. In case of a cache invalidation, the current access (write) will be added into the corresponding table. Thus, each table always has at least an entry. More specifically, \cheetah{} checks possible cache invalidations as follows.
+To address this problem, \Cheetah{} maintains a two-entry table ($T$) for each cache line ($L$), with eight words in total. In this table, each entry has two fields, thread ID and access type (read or write). It computes the invalidations according to the rule described in Section~\ref{sec:detect}. In case of a cache invalidation, the current access (write) will be added into the corresponding table. Thus, each table always has at least one entry. More specifically, \cheetah{} checks possible cache invalidations as follows.
 
 %a write access from a thread different with existing entries can cause a cache invalidation. When there is a cache invalidation, 
 \begin{itemize}
@@ -76,7 +76,7 @@ To address this problem, \Cheetah{} maintains a two-entry table ($T$) for each c
 For each read access, \cheetah{} will decide whether to record this entry. If the table $T$ is not full and the existing entry is coming from a different thread (with a different ID), \cheetah{} will record this read access in the table.
   
   \item
-  For each write access, \cheetah{} will decide whether this access incurs an invalidation. If the table is already full, it will lead to a cache invalidation since at least an existing entry is from a different thread (assumption 1). If the table is not full (and not empty), a write access will incur a cache invalidation only if the existing entry is from a different thread. \cheetah{} does nothing if this write access is from the same thread as the existing entry. 
+  For each write access, \cheetah{} will decide whether this access incurs an invalidation. If the table is already full, based on assumption 1, it will lead to a cache invalidation since there is at least one of existing entries from a different thread. If the table is not full (and not empty), a write access will incur a cache invalidation only if the existing entry is from a different thread. \cheetah{} does nothing if this write access is from the same thread as the existing entry. 
   
 \end{itemize}
      
