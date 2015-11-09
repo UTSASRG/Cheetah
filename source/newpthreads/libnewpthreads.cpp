@@ -5,7 +5,7 @@
 #include <stdarg.h>
 
 extern "C" {
-	#define HARDWARE_CORES_NUM 48
+	#define HARDWARE_CORES_NUM 16
 	unsigned long threadIndex = 0;
 
 	void initializer (void) __attribute__((constructor));
