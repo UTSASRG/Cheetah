@@ -279,18 +279,6 @@ public:
 
     result =  WRAP(pthread_create)(tid, attr, startThread, (void *)children);
 	
-#if USE_BINDING	
-		// Setting up the core affinity
-		if(result == 0) {
-			cpu_set_t cpuset;
-   		CPU_ZERO(&cpuset);
-
-			CPU_SET(tindex%xdefines::HARDWARE_CORES_NUM, &cpuset);
-
-			// Seting up the affinity
-			pthread_setaffinity_np(*tid, sizeof(cpu_set_t), &cpuset);
-		}
-#endif
     return result;
   }      
 
@@ -353,6 +341,20 @@ public:
     current->self = pthread_self();
 		current->tid = gettid();
 
+#if USE_BINDING	
+		// Setting up the core affinity
+		if(result == 0) {
+			cpu_set_t cpuset;
+   		CPU_ZERO(&cpuset);
+
+			CPU_SET(current->index%xdefines::HARDWARE_CORES_NUM, &cpuset);
+
+			// Seting up the affinity
+			pthread_setaffinity_np(*tid, sizeof(cpu_set_t), &cpuset);
+		}
+#endif
+
+		//fprintf(stderr, "STARTING THREADS\n");
 		//fprintf(stderr, "CHILD:tid %d currentself %lx index %d\n", current->tid,current->self, current->index);
     // from the TLS storage.
     result = current->startRoutine(current->startArg);
