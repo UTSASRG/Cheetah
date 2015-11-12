@@ -16,9 +16,6 @@ extern "C" {
 		int    threadIndex;
 	} startStruct; 
 		
-  startStruct mythread;
-
-
 
 	void initializer (void) __attribute__((constructor));
 
@@ -33,15 +30,19 @@ extern "C" {
 	}
 
 	void * startThread(void * arg) {
+  	startStruct * mythread = (startStruct *)arg;;
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
 
-    CPU_SET((mythread.threadIndex%HARDWARE_CORES_NUM)*2, &cpuset);
+		fprintf(stderr, "mythread->index %d\n", mythread->threadIndex);
+    CPU_SET((mythread->threadIndex%HARDWARE_CORES_NUM)*2, &cpuset);
 
     // Seting up the affinity
-    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    int result = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 
-		mythread.startRoutine(mythread.startArg);
+		fprintf(stderr, "Thread %d the core %d result %d\n", mythread->threadIndex, (mythread->threadIndex%HARDWARE_CORES_NUM)*2, result);
+
+		mythread->startRoutine(mythread->startArg);
 	
 		return NULL;	
 	}
@@ -52,12 +53,14 @@ extern "C" {
   	typedef int (*real_pthread_create) (pthread_t * tid, const pthread_attr_t * attr, void *(*start_routine) (void *), void * arg);
 
     static real_pthread_create thread_create  = (real_pthread_create) dlsym(RTLD_NEXT, "pthread_create");
+  	startStruct mythread;
 	
 		mythread.startRoutine = start_routine;
 		mythread.startArg = arg;
 		mythread.threadIndex = __atomic_fetch_add(&threadIndex, 1, __ATOMIC_RELAXED);
- 
-		return thread_create(tid, attr, startThread, NULL);
+
+		fprintf(stderr, "parent creating thread %d with %p\n", mythread.threadIndex, &mythread); 
+		return thread_create(tid, attr, startThread, (void *)&mythread);
   }
 };
 
