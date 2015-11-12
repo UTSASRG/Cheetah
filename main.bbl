@@ -1,0 +1,208 @@
+\begin{thebibliography}{10}
+
+\bibitem{impactofsharing}
+
+
+\bibitem{Balsamo:2004:MPP:987527.987640}
+S.~Balsamo, A.~Di~Marco, P.~Inverardi, and M.~Simeoni.
+\newblock Model-based performance prediction in software development: A survey.
+\newblock {\em IEEE Trans. Softw. Eng.}, 30(5):295--310, May 2004.
+
+\bibitem{Hoard}
+E.~D. Berger, K.~S. McKinley, R.~D. Blumofe, and P.~R. Wilson.
+\newblock Hoard: a scalable memory allocator for multithreaded applications.
+\newblock In {\em ASPLOS-IX: Proceedings of the ninth international conference
+  on Architectural support for programming languages and operating systems},
+  pages 117--128, New York, NY, USA, 2000. ACM Press.
+
+\bibitem{Berger:2001:CHM:378795.378821}
+E.~D. Berger, B.~G. Zorn, and K.~S. McKinley.
+\newblock Composing high-performance memory allocators.
+\newblock In {\em Proceedings of the ACM SIGPLAN 2001 Conference on Programming
+  Language Design and Implementation}, PLDI '01, pages 114--124, New York, NY,
+  USA, 2001. ACM.
+
+\bibitem{Cheng:2006:TEF:1157733.1157903}
+W.~Cheng, Q.~Zhao, B.~Yu, and S.~Hiroshige.
+\newblock Tainttrace: Efficient flow tracing with dynamic binary rewriting.
+\newblock In {\em Proceedings of the 11th IEEE Symposium on Computers and
+  Communications}, ISCC '06, pages 749--754, Washington, DC, USA, 2006. IEEE
+  Computer Society.
+
+\bibitem{gprof}
+{Gprof community }.
+\newblock Gnu gprof.
+\newblock \url{https://sourceware.org/binutils/docs/gprof/}.
+
+\bibitem{DBLP:conf/sigplan/GrahamKM82}
+S.~L. Graham, P.~B. Kessler, and M.~K. McKusick.
+\newblock gprof: a call graph execution profiler.
+\newblock In {\em SIGPLAN Symposium on Compiler Construction}, pages 120--126,
+  1982.
+
+\bibitem{falseshare:binaryinstrumentation1}
+S.~M. G\"{u}nther and J.~Weidendorfer.
+\newblock Assessing cache false sharing effects by dynamic binary
+  instrumentation.
+\newblock In {\em WBIA '09: Proceedings of the Workshop on Binary
+  Instrumentation and Applications}, pages 26--33, New York, NY, USA, 2009.
+  ACM.
+
+\bibitem{Harrow:2000:RCM:645880.672080}
+J.~J. Harrow.
+\newblock Runtime checking of multithreaded applications with visual threads.
+\newblock In {\em Proceedings of the 7th International SPIN Workshop on SPIN
+  Model Checking and Software Verification}, pages 331--342, London, UK, UK,
+  2000. Springer-Verlag.
+
+\bibitem{Hastings91purify:fast}
+R.~Hastings and B.~Joyce.
+\newblock Purify: Fast detection of memory leaks and access errors.
+\newblock In {\em In Proc. of the Winter 1992 USENIX Conference}, pages
+  125--138, 1991.
+
+\bibitem{detect:ptu}
+{Intel Corporation}.
+\newblock {\em Intel Performance Tuning Utility 3.2 Update}, November 2008.
+
+\bibitem{detect:intel}
+{Intel Corporation}.
+\newblock Avoiding and identifying false sharing among threads.
+\newblock
+  \url{http://software.intel.com/en-us/articles/avoiding-and-identifying-false-sharing-among-threads/},
+  February 2010.
+
+\bibitem{mldetect}
+S.~Jayasena, S.~Amarasinghe, A.~Abeyweera, G.~Amarasinghe, H.~De~Silva,
+  S.~Rathnayake, X.~Meng, and Y.~Liu.
+\newblock Detection of false sharing using machine learning.
+\newblock In {\em Proceedings of SC13: International Conference for High
+  Performance Computing, Networking, Storage and Analysis}, SC '13, pages
+  30:1--30:9, New York, NY, USA, 2013. ACM.
+
+\bibitem{Joao:2012:BIS:2150976.2151001}
+J.~A. Joao, M.~A. Suleman, O.~Mutlu, and Y.~N. Patt.
+\newblock Bottleneck identification and scheduling in multithreaded
+  applications.
+\newblock In {\em Proceedings of the Seventeenth International Conference on
+  Architectural Support for Programming Languages and Operating Systems},
+  ASPLOS XVII, pages 223--234, New York, NY, USA, 2012. ACM.
+
+\bibitem{oprofile}
+J.~Levon and P.~Elie.
+\newblock Oprofile: A system profiler for {Linux}, 2004.
+
+\bibitem{falseshare:binaryinstrumentation2}
+C.-L. Liu.
+\newblock False sharing analysis for multithreaded programs.
+\newblock Master's thesis, National Chung Cheng University, July 2009.
+
+\bibitem{Sheriff}
+T.~Liu and E.~D. Berger.
+\newblock Sheriff: precise detection and automatic mitigation of false sharing.
+\newblock In {\em Proceedings of the 2011 ACM international conference on
+  Object oriented programming systems languages and applications}, OOPSLA '11,
+  pages 3--18, New York, NY, USA, 2011. ACM.
+
+\bibitem{Predator}
+T.~Liu, C.~Tian, H.~Ziang, and E.~D. Berger.
+\newblock Predator: Predictive false sharing detection.
+\newblock In {\em Proceedings of 19th ACM SIGPLAN Symposium on Principles and
+  Practice of Parallel Programming}, PPOPP'14, New York, NY, USA, 2014. ACM.
+
+\bibitem{helgrind}
+O.~LLP.
+\newblock "helgrind: A data race detector".
+\newblock \url{http://valgrind.org/docs/manual/hg-manual.html/}, 2007.
+
+\bibitem{Mucci99papi}
+P.~J. Mucci, S.~Browne, C.~Deane, and G.~Ho.
+\newblock Papi: A portable interface to hardware performance counters.
+\newblock In {\em In Proceedings of the Department of Defense HPCMP Users Group
+  Conference}, pages 7--10, 1999.
+
+\bibitem{OSdetection}
+M.~Nanavati, M.~Spear, N.~Taylor, S.~Rajagopalan, D.~T. Meyer, W.~Aiello, and
+  A.~Warfield.
+\newblock Whose cache line is it anyway?: operating system support for live
+  detection and repair of false sharing.
+\newblock In {\em Proceedings of the 8th ACM European Conference on Computer
+  Systems}, EuroSys '13, pages 141--154, New York, NY, USA, 2013. ACM.
+
+\bibitem{Narayanasamy:2006:ALO:1140277.1140303}
+S.~Narayanasamy, C.~Pereira, H.~Patil, R.~Cohn, and B.~Calder.
+\newblock Automatic logging of operating system effects to guide
+  application-level architecture simulation.
+\newblock In {\em Proceedings of the Joint International Conference on
+  Measurement and Modeling of Computer Systems}, SIGMETRICS '06/Performance
+  '06, pages 216--227, New York, NY, USA, 2006. ACM.
+
+\bibitem{Newsome05dynamictaint}
+J.~Newsome.
+\newblock Dynamic taint analysis for automatic detection, analysis, and
+  signature generation of exploits on commodity software.
+\newblock In {\em Proc. of the Network and Distributed System Security
+  Symposium (NDSS 2005)}, 2005.
+
+\bibitem{DProf}
+A.~Pesterev, N.~Zeldovich, and R.~T. Morris.
+\newblock Locating cache performance bottlenecks using data profiling.
+\newblock In {\em EuroSys '10: Proceedings of the 5th European conference on
+  Computer systems}, pages 335--348, New York, NY, USA, 2010. ACM.
+
+\bibitem{Qin:2006:LLP:1194816.1194834}
+F.~Qin, C.~Wang, Z.~Li, H.-s. Kim, Y.~Zhou, and Y.~Wu.
+\newblock Lift: A low-overhead practical information flow tracking system for
+  detecting security attacks.
+\newblock In {\em Proceedings of the 39th Annual IEEE/ACM International
+  Symposium on Microarchitecture}, MICRO 39, pages 135--148, Washington, DC,
+  USA, 2006. IEEE Computer Society.
+
+\bibitem{404681}
+M.~Ronsse, B.~Stougie, J.~Maebe, F.~Cornelis, and K.~De~Bosschere.
+\newblock An efficient data race detector backend for diota.
+\newblock In G.~Joubert, W.~Nagel, F.~Peters, and W.~Walter, editors, {\em
+  ADVANCES IN PARALLEL COMPUTING}, volume~13, pages 39--46. Elsevier Science,
+  2004.
+
+\bibitem{Savage:1997:EDD:268998.266641}
+S.~Savage, M.~Burrows, G.~Nelson, P.~Sobalvarro, and T.~Anderson.
+\newblock Eraser: A dynamic data race detector for multi-threaded programs.
+\newblock In {\em Proceedings of the Sixteenth ACM Symposium on Operating
+  Systems Principles}, SOSP '97, pages 27--37, New York, NY, USA, 1997. ACM.
+
+\bibitem{falseshare:simulator}
+M.~Schindewolf.
+\newblock Analysis of cache misses using {SIMICS}.
+\newblock Master's thesis, Institute for Computing Systems Architecture,
+  University of Edinburgh, 2007.
+
+\bibitem{Seward:2005:UVD:1247360.1247362}
+J.~Seward and N.~Nethercote.
+\newblock Using valgrind to detect undefined value errors with bit-precision.
+\newblock In {\em Proceedings of the Annual Conference on USENIX Annual
+  Technical Conference}, ATEC '05, pages 2--2, Berkeley, CA, USA, 2005. USENIX
+  Association.
+
+\bibitem{Wicaksono11detectingfalse}
+B.~Wicaksono, M.~Tolubaeva, and B.~Chapman.
+\newblock Detecting false sharing in openmp applications using the darwin
+  framework.
+\newblock In {\em In Proceedings of International Workshop on Languages and
+  Compilers for Parallel Computing}, 2011.
+
+\bibitem{openmp}
+B.~Wicaksono, M.~Tolubaeva, and B.~Chapman.
+\newblock Detecting false sharing in openmp applications using the darwin
+  framework.
+\newblock In S.~Rajopadhye and M.~Mills~Strout, editors, {\em Languages and
+  Compilers for Parallel Computing}, volume 7146 of {\em Lecture Notes in
+  Computer Science}, pages 283--297. Springer Berlin Heidelberg, 2013.
+
+\bibitem{qinzhao}
+Q.~Zhao, D.~Koh, S.~Raza, D.~Bruening, W.-F. Wong, and S.~Amarasinghe.
+\newblock Dynamic cache contention detection in multi-threaded applications.
+\newblock In {\em The International Conference on Virtual Execution
+  Environments}, Newport Beach, CA, Mar 2011.
+
+\end{thebibliography}
