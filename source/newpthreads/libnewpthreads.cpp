@@ -17,6 +17,8 @@ extern "C" {
 	} startStruct; 
 		
 
+	startStruct threads[4096];
+
 	void initializer (void) __attribute__((constructor));
 
 	// Setting up the first thread.
@@ -53,14 +55,13 @@ extern "C" {
   	typedef int (*real_pthread_create) (pthread_t * tid, const pthread_attr_t * attr, void *(*start_routine) (void *), void * arg);
 
     static real_pthread_create thread_create  = (real_pthread_create) dlsym(RTLD_NEXT, "pthread_create");
-  	startStruct mythread;
+		int index = __atomic_fetch_add(&threadIndex, 1, __ATOMIC_RELAXED);
 	
-		mythread.startRoutine = start_routine;
-		mythread.startArg = arg;
-		mythread.threadIndex = __atomic_fetch_add(&threadIndex, 1, __ATOMIC_RELAXED);
+		threads[index].startRoutine = start_routine;
+		threads[index].startArg = arg;
+		threads[index].threadIndex = index;
 
-		fprintf(stderr, "parent creating thread %d with %p\n", mythread.threadIndex, &mythread); 
-		return thread_create(tid, attr, startThread, (void *)&mythread);
+		return thread_create(tid, attr, startThread, (void *)&threads[index]);
   }
 };
 
