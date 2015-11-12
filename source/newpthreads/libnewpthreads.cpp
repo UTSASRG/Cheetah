@@ -36,16 +36,17 @@ extern "C" {
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
 
-		fprintf(stderr, "mythread->index %d\n", mythread->threadIndex);
+		//fprintf(stderr, "mythread->index %d\n", mythread->threadIndex);
     CPU_SET((mythread->threadIndex%HARDWARE_CORES_NUM)*2, &cpuset);
+    //CPU_SET(mythread->threadIndex%HARDWARE_CORES_NUM, &cpuset);
 
     // Seting up the affinity
     int result = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
 
-		fprintf(stderr, "Thread %d the core %d result %d\n", mythread->threadIndex, (mythread->threadIndex%HARDWARE_CORES_NUM)*2, result);
-
+		//fprintf(stderr, "Thread %d the core %d result %d\n", mythread->threadIndex, (mythread->threadIndex%HARDWARE_CORES_NUM)*2, result);
 		mythread->startRoutine(mythread->startArg);
-	
+
+		//fprintf(stderr, "finish thread %d\n", mythread->threadIndex);	
 		return NULL;	
 	}
 	  
