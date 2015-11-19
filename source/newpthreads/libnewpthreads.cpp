@@ -37,8 +37,8 @@ extern "C" {
     CPU_ZERO(&cpuset);
 
 		//fprintf(stderr, "mythread->index %d\n", mythread->threadIndex);
-    CPU_SET((mythread->threadIndex%HARDWARE_CORES_NUM)*2, &cpuset);
-    //CPU_SET(mythread->threadIndex%HARDWARE_CORES_NUM, &cpuset);
+ //   CPU_SET((mythread->threadIndex%HARDWARE_CORES_NUM)*2, &cpuset);
+    CPU_SET(mythread->threadIndex%HARDWARE_CORES_NUM, &cpuset);
 
     // Seting up the affinity
     int result = pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);

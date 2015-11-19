@@ -27,12 +27,11 @@
 #include <stdlib.h>
 
 #include "finetime.h"
-double cpu_freq = 1200781;
-// 2327507.08008; // FIX ME What?
+double cpu_freq = 1599000; //KHz
 
 void __get_time(struct timeinfo * ti)
 {
-	unsigned int tlow, thigh;
+	unsigned long tlow, thigh;
 
 	asm volatile ("rdtsc"
 		  : "=a"(tlow),
@@ -46,15 +45,21 @@ double __count_elapse(struct timeinfo * start, struct timeinfo * stop)
 {
 	double elapsed = 0.0;
 
-	elapsed = (double)(stop->low) + (double)(UINT_MAX)*(double)(stop->high - start->high) - (double)start->low;
+	if(stop->high < start->high) {
+		elapsed = (double)(stop->low) + (double)(ULONG_MAX)*(double)(stop->high + ULONG_MAX - start->high) - (double)start->low;
+	}
+	else  
+	elapsed = (double)(stop->low) + (double)(ULONG_MAX)*(double)(stop->high - start->high) - (double)start->low;
+	//if (stop->low < start->low)
+	//	elapsed -= (double)ULONG_MAX;
 
-//	printf("STOP: low %ld hight %ld START: low %ld high %ld\n", stop->low, stop->high, start->low, start->high);
+	//printf("STOP: low %ld hight %ld START: low %ld high %ld\n", stop->low, stop->high, start->low, start->high);
 	
-//	printf("elapsed %f\n", elapsed);
+	//printf("elapsed %f\n", elapsed);
  
-//	if(elapsed > 5000.0) {
+	if(elapsed > 5000.0) {
 		//while(1);
-//	}
+	}
 	return elapsed;
 }
 
@@ -106,5 +111,11 @@ unsigned long elapsed2ms(double elapsed)
 {
 	unsigned long ms;
 	ms =(unsigned long)(elapsed/cpu_freq);
+	
+#if 0
+	if(ms > 5000) {
+		while(1) ;
+	}
+#endif
 	return(ms);
 }
