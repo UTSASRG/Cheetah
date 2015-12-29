@@ -1,13 +1,5 @@
 \begin{thebibliography}{10}
 
-\bibitem{impactofsharing}
-
-
-\bibitem{Balsamo:2004:MPP:987527.987640}
-S.~Balsamo, A.~Di~Marco, P.~Inverardi, and M.~Simeoni.
-\newblock Model-based performance prediction in software development: A survey.
-\newblock {\em IEEE Trans. Softw. Eng.}, 30(5):295--310, May 2004.
-
 \bibitem{Hoard}
 E.~D. Berger, K.~S. McKinley, R.~D. Blumofe, and P.~R. Wilson.
 \newblock Hoard: a scalable memory allocator for multithreaded applications.
@@ -22,12 +14,31 @@ E.~D. Berger, B.~G. Zorn, and K.~S. McKinley.
   Language Design and Implementation}, PLDI '01, pages 114--124, New York, NY,
   USA, 2001. ACM.
 
-\bibitem{Cheng:2006:TEF:1157733.1157903}
-W.~Cheng, Q.~Zhao, B.~Yu, and S.~Hiroshige.
-\newblock Tainttrace: Efficient flow tracing with dynamic binary rewriting.
-\newblock In {\em Proceedings of the 11th IEEE Symposium on Computers and
-  Communications}, ISCC '06, pages 749--754, Washington, DC, USA, 2006. IEEE
-  Computer Society.
+\bibitem{parsec}
+C.~Bienia.
+\newblock {\em Benchmarking Modern Multiprocessors}.
+\newblock PhD thesis, Princeton University, January 2011.
+
+\bibitem{falseshare:effect}
+W.~J. Bolosky and M.~L. Scott.
+\newblock False sharing and its effect on shared memory performance.
+\newblock In {\em {SEDMS IV}: USENIX Symposium on Experiences with Distributed
+  and Multiprocessor Systems}, pages 57--71, Berkeley, CA, USA, 1993. USENIX
+  Association.
+
+\bibitem{DBLP:conf/sc/BuckH04}
+B.~R. Buck and J.~K. Hollingsworth.
+\newblock Data centric cache measurement on the {Intel ltanium} 2 processor.
+\newblock In {\em {SC '04}: Proc. of the 2004 ACM/IEEE Conf. on
+  Supercomputing}, page~58, Washington, DC, USA, 2004. IEEE Computer Society.
+
+\bibitem{AMDIBS:07}
+P.~J. Drongowski.
+\newblock Instruction-based sampling: A new performance analysis technique for
+  {AMD} family 10h processors.
+\newblock \url{http://developer.amd.com/Assets/AMD\_IBS\_paper\_EN.pdf},
+  November 2007.
+\newblock Last accessed: Dec. 13, 2013.
 
 \bibitem{gprof}
 {Gprof community }.
@@ -48,18 +59,15 @@ S.~M. G\"{u}nther and J.~Weidendorfer.
   Instrumentation and Applications}, pages 26--33, New York, NY, USA, 2009.
   ACM.
 
-\bibitem{Harrow:2000:RCM:645880.672080}
-J.~J. Harrow.
-\newblock Runtime checking of multithreaded applications with visual threads.
-\newblock In {\em Proceedings of the 7th International SPIN Workshop on SPIN
-  Model Checking and Software Verification}, pages 331--342, London, UK, UK,
-  2000. Springer-Verlag.
+\bibitem{rtdsc}
+Intel.
+\newblock Using the rdtsc instruction for performance monitoring.
+\newblock \url{https://www.ccsl.carleton.ca/~jamuir/rdtscpm1.pdf}.
 
-\bibitem{Hastings91purify:fast}
-R.~Hastings and B.~Joyce.
-\newblock Purify: Fast detection of memory leaks and access errors.
-\newblock In {\em In Proc. of the Winter 1992 USENIX Conference}, pages
-  125--138, 1991.
+\bibitem{Intel:VTune}
+{Intel Corporation}.
+\newblock Intel {VTune} performance analyzer.
+\newblock \url{http://www.intel.com/software/products/vtune}.
 
 \bibitem{detect:ptu}
 {Intel Corporation}.
@@ -72,6 +80,18 @@ R.~Hastings and B.~Joyce.
   \url{http://software.intel.com/en-us/articles/avoiding-and-identifying-false-sharing-among-threads/},
   February 2010.
 
+\bibitem{IntelArch:PEBS:Sept09}
+{Intel Corporation}.
+\newblock {Intel 64 and IA-32} architectures software developer's manual,
+  {Volume 3B}: System programming guide, {Part 2, Number 253669-032}, June
+  2010.
+
+\bibitem{DBLP:conf/sc/ItzkowitzWAK03}
+M.~Itzkowitz, B.~J.~N. Wylie, C.~Aoki, and N.~Kosche.
+\newblock Memory profiling using hardware counters.
+\newblock In {\em SC '03: Proc. of the 2003 ACM/IEEE Conf. on Supercomputing},
+  page~17, Washington, DC, USA, 2003. IEEE Computer Society.
+
 \bibitem{mldetect}
 S.~Jayasena, S.~Amarasinghe, A.~Abeyweera, G.~Amarasinghe, H.~De~Silva,
   S.~Rathnayake, X.~Meng, and Y.~Liu.
@@ -79,14 +99,6 @@ S.~Jayasena, S.~Amarasinghe, A.~Abeyweera, G.~Amarasinghe, H.~De~Silva,
 \newblock In {\em Proceedings of SC13: International Conference for High
   Performance Computing, Networking, Storage and Analysis}, SC '13, pages
   30:1--30:9, New York, NY, USA, 2013. ACM.
-
-\bibitem{Joao:2012:BIS:2150976.2151001}
-J.~A. Joao, M.~A. Suleman, O.~Mutlu, and Y.~N. Patt.
-\newblock Bottleneck identification and scheduling in multithreaded
-  applications.
-\newblock In {\em Proceedings of the Seventeenth International Conference on
-  Architectural Support for Programming Languages and Operating Systems},
-  ASPLOS XVII, pages 223--234, New York, NY, USA, 2012. ACM.
 
 \bibitem{oprofile}
 J.~Levon and P.~Elie.
@@ -110,16 +122,25 @@ T.~Liu, C.~Tian, H.~Ziang, and E.~D. Berger.
 \newblock In {\em Proceedings of 19th ACM SIGPLAN Symposium on Principles and
   Practice of Parallel Programming}, PPOPP'14, New York, NY, USA, 2014. ACM.
 
-\bibitem{helgrind}
-O.~LLP.
-\newblock "helgrind: A data race detector".
-\newblock \url{http://valgrind.org/docs/manual/hg-manual.html/}, 2007.
+\bibitem{ibs-sc}
+X.~Liu and J.~M. {Mellor-Crummey}.
+\newblock A data-centric profiler for parallel programs.
+\newblock In {\em Proc. of the 2013 ACM/IEEE Conference on Supercomputing},
+  Denver, CO, USA, 2013.
 
-\bibitem{Mucci99papi}
-P.~J. Mucci, S.~Browne, C.~Deane, and G.~Ho.
-\newblock Papi: A portable interface to hardware performance counters.
-\newblock In {\em In Proceedings of the Department of Defense HPCMP Users Group
-  Conference}, pages 7--10, 1999.
+\bibitem{ibs-pact}
+X.~Liu, K.~Sharma, and J.~Mellor-Crummey.
+\newblock Arraytool: A lightweight profiler to guide array regrouping.
+\newblock In {\em Proceedings of the 23rd International Conference on Parallel
+  Architectures and Compilation}, PACT '14, pages 405--416, New York, NY, USA,
+  2014. ACM.
+
+\bibitem{ibs-sc2}
+X.~Liu and B.~Wu.
+\newblock {ScaAnalyzer}: A tool to identify memory scalability bottlenecks in
+  parallel programs.
+\newblock In {\em Proc. of the 2015 ACM/IEEE Conference on Supercomputing},
+  Austin, TX, USA, 2015.
 
 \bibitem{OSdetection}
 M.~Nanavati, M.~Spear, N.~Taylor, S.~Rajagopalan, D.~T. Meyer, W.~Aiello, and
@@ -129,20 +150,13 @@ M.~Nanavati, M.~Spear, N.~Taylor, S.~Rajagopalan, D.~T. Meyer, W.~Aiello, and
 \newblock In {\em Proceedings of the 8th ACM European Conference on Computer
   Systems}, EuroSys '13, pages 141--154, New York, NY, USA, 2013. ACM.
 
-\bibitem{Narayanasamy:2006:ALO:1140277.1140303}
-S.~Narayanasamy, C.~Pereira, H.~Patil, R.~Cohn, and B.~Calder.
-\newblock Automatic logging of operating system effects to guide
-  application-level architecture simulation.
-\newblock In {\em Proceedings of the Joint International Conference on
-  Measurement and Modeling of Computer Systems}, SIGMETRICS '06/Performance
-  '06, pages 216--227, New York, NY, USA, 2006. ACM.
-
-\bibitem{Newsome05dynamictaint}
-J.~Newsome.
-\newblock Dynamic taint analysis for automatic detection, analysis, and
-  signature generation of exploits on commodity software.
-\newblock In {\em Proc. of the Network and Distributed System Security
-  Symposium (NDSS 2005)}, 2005.
+\bibitem{MESI}
+M.~S. Papamarcos and J.~H. Patel.
+\newblock A low-overhead coherence solution for multiprocessors with private
+  cache memories.
+\newblock In {\em Proceedings of the 11th Annual International Symposium on
+  Computer Architecture}, ISCA '84, pages 348--354, New York, NY, USA, 1984.
+  ACM.
 
 \bibitem{DProf}
 A.~Pesterev, N.~Zeldovich, and R.~T. Morris.
@@ -150,26 +164,12 @@ A.~Pesterev, N.~Zeldovich, and R.~T. Morris.
 \newblock In {\em EuroSys '10: Proceedings of the 5th European conference on
   Computer systems}, pages 335--348, New York, NY, USA, 2010. ACM.
 
-\bibitem{Qin:2006:LLP:1194816.1194834}
-F.~Qin, C.~Wang, Z.~Li, H.-s. Kim, Y.~Zhou, and Y.~Wu.
-\newblock Lift: A low-overhead practical information flow tracking system for
-  detecting security attacks.
-\newblock In {\em Proceedings of the 39th Annual IEEE/ACM International
-  Symposium on Microarchitecture}, MICRO 39, pages 135--148, Washington, DC,
-  USA, 2006. IEEE Computer Society.
-
-\bibitem{404681}
-M.~Ronsse, B.~Stougie, J.~Maebe, F.~Cornelis, and K.~De~Bosschere.
-\newblock An efficient data race detector backend for diota.
-\newblock In G.~Joubert, W.~Nagel, F.~Peters, and W.~Walter, editors, {\em
-  ADVANCES IN PARALLEL COMPUTING}, volume~13, pages 39--46. Elsevier Science,
-  2004.
-
-\bibitem{Savage:1997:EDD:268998.266641}
-S.~Savage, M.~Burrows, G.~Nelson, P.~Sobalvarro, and T.~Anderson.
-\newblock Eraser: A dynamic data race detector for multi-threaded programs.
-\newblock In {\em Proceedings of the Sixteenth ACM Symposium on Operating
-  Systems Principles}, SOSP '97, pages 27--37, New York, NY, USA, 1997. ACM.
+\bibitem{phoenix-hpca}
+C.~Ranger, R.~Raghuraman, A.~Penmetsa, G.~Bradski, and C.~Kozyrakis.
+\newblock Evaluating {MapReduce} for multi-core and multiprocessor systems.
+\newblock In {\em HPCA '07: Proceedings of the 2007 IEEE 13th International
+  Symposium on High Performance Computer Architecture}, pages 13--24,
+  Washington, DC, USA, 2007. IEEE Computer Society.
 
 \bibitem{falseshare:simulator}
 M.~Schindewolf.
@@ -177,12 +177,12 @@ M.~Schindewolf.
 \newblock Master's thesis, Institute for Computing Systems Architecture,
   University of Edinburgh, 2007.
 
-\bibitem{Seward:2005:UVD:1247360.1247362}
-J.~Seward and N.~Nethercote.
-\newblock Using valgrind to detect undefined value errors with bit-precision.
-\newblock In {\em Proceedings of the Annual Conference on USENIX Annual
-  Technical Conference}, ATEC '05, pages 2--2, Berkeley, CA, USA, 2005. USENIX
-  Association.
+\bibitem{Dramon}
+W.~Wang, T.~Dey, J.~Davidson, and M.~Soffa.
+\newblock {DraMon}: Predicting memory bandwidth usage of multi-threaded
+  programs with high accuracy and low overhead.
+\newblock In {\em High Performance Computer Architecture (HPCA), 2014 IEEE 20th
+  International Symposium on}, pages 380--391, Feb 2014.
 
 \bibitem{Wicaksono11detectingfalse}
 B.~Wicaksono, M.~Tolubaeva, and B.~Chapman.
