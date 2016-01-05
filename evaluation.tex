@@ -13,9 +13,9 @@ The evaluation will answer the following research questions in order as follows.
 
 \end{itemize}
 
-\paragraph{Experimental Setup.} We evaluate \cheetah{} on an AMD Opteron machine, which has 48 1.6 GHz cores, 64 KB private L1 data cache, 512 KB private L2 cache, 10 MB shared L3 cache, and 128 GB memory. We use gcc-4.6 with {\tt -O2} option to compile all applications. Since the machine is a NUMA machine and the performance may vary with different scheduling policies, we bind the threads to cores for the purpose of consistent performance.   
+\paragraph{Experimental Setup.} We evaluate \cheetah{} on an AMD Opteron machine, which has 48 1.6 GHz cores, 64 KB private L1 data cache, 512 KB private L2 cache, 10 MB shared L3 cache, and 128 GB memory. We use gcc-4.6 with {\tt -O2} option to compile all applications. Since the machine is a NUMA machine and the performance may vary with different scheduling policies, we bind the threads to cores in order to acquire consistent performance.   
 
-\paragraph{Evaluated Applications.} As prior work~\cite{Sheriff, Predator, qinzhao, mldetect}, we perform experiments on two well-known benchmark suites, Phoenix~\cite{phoenix-hpca} and PARSEC~\cite{parsec}. We intentionally use 16 threads in order to run applications sufficiently long, since \cheetah{} needs enough samples to detect false sharing problems. If that is still not enough, we change the source code by adding a loop or use a larger input so that every benchmark will run at least 5 seconds to collect enough samples.
+\paragraph{Evaluated Applications.} As prior work~\cite{Sheriff, Predator, qinzhao, mldetect}, we perform experiments on two well-known benchmark suites, Phoenix~\cite{phoenix-hpca} and PARSEC~\cite{parsec}. We intentionally use 16 threads in order to run applications sufficiently long, since \cheetah{} needs enough samples to detect false sharing problems.  Basically, we want to make every application run at least 5 seconds to collect enough samples. For PARSEC benchmarks, we are utilizing the \texttt{native} input. For some applications of \texttt{Phoenix}, we explicitly change the source code for \todo{\texttt{linear\_regression}, XXXX}. 
 
 \subsection{Performance Overhead}
 \label{sec:perf}
@@ -23,14 +23,14 @@ The evaluation will answer the following research questions in order as follows.
 \begin{figure*}[htbp]
 \centering
 \includegraphics[width=2\columnwidth]{figure/Overhead.pdf}
-\caption{Runtime overhead of \Cheetah{}. We normalize the runtime to that of \pthreads{}. On average, \cheetah{} only introduces around 7\% performance overhead on all evaluated benchmarks, which makes it practical to be used in the deployed software. \label{fig:overhead}}
+\caption{Runtime overhead of \Cheetah{}. We normalize the runtime to that of \pthreads{}. On average, \cheetah{} only introduces around 7\% performance overhead on all evaluated applications, which makes it practical to be used in real deployment. \label{fig:overhead}}
 \end{figure*}
 
 We show the average runtime overhead of \cheetah{} in Figure~\ref{fig:overhead}. We run each application for five times and show the average results here. According to this figure, \cheetah{} only introduces around 7\% performance overhead, which makes it practical to be utilized in the real deployment. 
 
-During the evaluation, we configure \cheetah{} with the sampling frequency at one out of 64K instructions. Thus, for every 64K instructions, the trap handler will be notified once so that \cheetah{} can collect the information of each sampled memory access. Because of \cheetah{}'s very coarse sampling rate, we should let programs to run sufficiently long enough. 
+During the evaluation, we configure \cheetah{} with the sampling frequency at one out of 64K instructions. Thus, for every 64K instructions, the trap handler will be notified once so that \cheetah{} can collect the information of memory accesses on heap and global variables. Currently, \Cheetah{} skips memory accesses on kernel, libraries or others. 
 
-The performance overhead of \cheetah{} mainly comes from the handling of each sampled memory access and each thread creation. For each sampled access, we will collect information such as the type of access (read or write), the number of cycles, and update corresponding data structure such as the history table of its cache line. \cheetah{} also intercepts every thread creation to setup the PMU unit, get the timestamp and update the phase information. The setting of the PMU registers introduces non-negligible overhead since it invokes six \texttt{pfmon} APIs and six additional system calls. For applications with a big number of threads, including \texttt{kmeans} (with 224 threads, running around 14 seconds) and \texttt{x264} (with 1024 threads, running around 40 seconds), \cheetah{} introduces significantly higher performance overhead than other threads. For other applications, \cheetah{} introduces less than 12\% performance overhead, with 4\% overhead on average if these two applications are excluded.  
+The performance overhead of \cheetah{} mainly comes from the handling of each sampled memory access and each thread creation. For each sampled access, we will collect information such as the type of access (read or write), the number of cycles, and update  the history table of its corresponding cache line. \cheetah{} also intercepts every thread creation to setup the PMU unit, get the timestamp and update the phase information. For applications with a big number of threads, including \texttt{kmeans} (with 224 threads in 14 seconds) and \texttt{x264} (with 1024 threads in 40 seconds), setting PMU registers introduces non-negligible overhead since it invokes six \texttt{pfmon} APIs and six additional system calls. For other applications, \cheetah{} introduces less than 12\% performance overhead, with 4\% overhead on average if these two applications are excluded.  
 
 %\todo{Check the creation of threads for kmeans and x264. Initializing IBS registers for every thread adds significant performance overhead. Kmeans 224 threads in 14 seconds. 1023 threads in 40 seconds.  }
 
@@ -39,8 +39,9 @@ The performance overhead of \cheetah{} mainly comes from the handling of each sa
 \subsection{Effectiveness}
 \label{sec:effectiveness}
 
+\todo{Now}
 %The state-of-the-art tool Predator reports five false sharing instances in Phoenix and Parsec benchmark suite, including \texttt{histogram}, \texttt{linear\_regression}, \texttt{reverse\_index}, \texttt{streamcluster}, and \texttt{word\_count}~\cite{Predator}. 
-\cheetah{} successfully detects two known false sharing problems with significant performance impact, including\texttt{linear\_regression} in Phoenix and \texttt{streamcluster} in Parsec. 
+\cheetah{} successfully detects two known false sharing problems with significant performance impact, including\texttt{linear\_regression} in Phoenix and \texttt{streamcluster} in PARSEC. 
 
 %In the remaining of this section, we discuss how reported information can help us to confirm and fix these false sharing problems. 
 
