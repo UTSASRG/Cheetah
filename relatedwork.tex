@@ -6,6 +6,8 @@
 %: using the latency information to predict the performance impact of fixing an existing false sharing instance, without actual fixes.
  
 %Prior work tends to breakdown the overhead of parallelization or stalls of cycles into different parts of programs or different hardware unit~\cite{Crovella:1994:PPP:602770.602870, Azimi:2005:OPA:1088149.1088163}, but we did not find any work that is close to our target. 
+
+%\todo{Maybe we should change the description if we don't have space to discuss PMU-based analysis.} 
 In this section, we review existing tools in detecting false sharing issues, and other techniques to utilize PMU for dynamic analysis.
 
 \cheetah{} is the first work to predict the potential performance improvement after fixing false sharing problems, relying on access latency information provided by the PMU hardware. Existing work utilizes the latency information to point out variables and instructions suffering with high access latency ~\cite{ibs-sc, ibs-pact}. 
@@ -36,11 +38,11 @@ and provides much richer information for optimization, including word-level acce
 
 %\todo{mention it can work on the mysql.It is also the first work that can predict the performance impact of false sharing problems. }
 
-%\subsection{Other PMU-Related Analysis}
-%There are many tools to analyze memory related bottlenecks, not necessarily relate to false sharing problems. 
+\subsection{Other PMU-Related Analysis}
+%Existing tools also utilized PMU events to analyze memory related bottlenecks, but not necessarily relate to false sharing problems. 
 %By monitoring every memory access, prior tools can analyze memory related bottlenecks, such as SLO~\cite{SLO1}, Valgrind~\cite{Nethercote:2007:VFH:1250734.1250746}, and MemSpy~\cite{Martonosi92}, but they may incur hundreds of times slowdowns. Selectively monitoring memory accesses can still cause 3-5$\times$ overhead, like MACPO~\cite{macpo}. 
 
-%PMU-related techniques are widely used to identify other performance problems because of less than 10\% overhead, such as memory system behavior and data locality. Itzkowitz et al. introduce the memory profiling to Sun ONE Studio, which can collect and analyze memory accesses in sequential programs and report measurement data related to annotated code segment~\cite{DBLP:conf/sc/ItzkowitzWAK03}. Buck and Hollingsworth develope Cache Scope to perform data-centric analysis by using Itanium2 event address registers (EAR)~\cite{DBLP:conf/sc/BuckH04}. HPCToolkit~\cite{ibs-sc} and ArrayTool~\cite{ibs-pact} uses AMD IBS to associate memory access latency with both static and heap allocated data objects, and further provides optimization guidance for array regrouping. However, these general-purpose tools at best can only point out data objects suffering from high access latency, but they do not tell whether the high latency comes from false sharing or not and can not provide rich information to assist optimizations. In contrast, \cheetah{} can correctly identify false sharing problems and associate detailed memory accesses with problematic data objects to help optimizations.
+PMU-related techniques are widely used to identify other performance problems because of less than 10\% overhead, such as memory system behavior and data locality. Itzkowitz et al. introduce the memory profiling to Sun ONE Studio, which can collect and analyze memory accesses in sequential programs and report measurement data related to annotated code segment~\cite{DBLP:conf/sc/ItzkowitzWAK03}. Buck and Hollingsworth develope Cache Scope to perform data-centric analysis by using Itanium2 event address registers (EAR)~\cite{DBLP:conf/sc/BuckH04}. HPCToolkit~\cite{ibs-sc} and ArrayTool~\cite{ibs-pact} uses AMD IBS to associate memory access latency with both static and heap allocated data objects, and further provides optimization guidance for array regrouping. However, these general-purpose tools at best can only point out data objects suffering from high access latency, but they do not tell whether the high latency comes from false sharing or not and can not provide rich information to assist optimizations. In contrast, \cheetah{} can correctly identify false sharing problems and associate detailed memory accesses with problematic data objects to help optimizations.
 %Cache Scope associates latency with data objects and functions that accessed them. It identifies problematic data objects with poor cache locality and long access latency. With similar techniques, 
 
 
