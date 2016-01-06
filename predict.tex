@@ -3,22 +3,20 @@
 \label{sec:predictimprove}
 %\todo{Adding a picture, maybe similar to Sammati paper}
 %\todo{memory bound. Predict memory bound. IO we can't bound. original 100, we remove 80. Latency can be predict to the execution time.  } 
-Fixing false sharing does not necessarily yield significant performance speedup, even for instances with a large number of cache invalidations~\cite{Sheriff, Predator}. Zhao et al. even observe that fixing false sharing may even slowdown a program since padding data structures may increase memory footprint or lose the cache locality~\cite{qinzhao}. Thus, it is very important to rule out insignificant false sharing instances, which are not false positives but reporting them increase manual burden for fixes.
+Fixing false sharing does not necessarily yield significant performance speedups, even for instances with a large number of cache invalidations~\cite{Sheriff, Predator}. Zhao et al. even observe that fixing false sharing may even slowdown a program since padding data structures may increase memory footprint or lose the cache locality~\cite{qinzhao}. Thus, it is very important to rule out insignificant false sharing instances, which are not false positives but reporting them increases manual burden for fixes.
 
 \cheetah{} makes the first attempt to quantitatively assess the potential performance gain of fixing a false sharing instance. Thus, programmers can focus on severe problems only, avoiding unnecessary manual effort spent on insignificant cases.
-
 %\todo{NOW}
-
 \cheetah{}'s assessment is based on the following observations:
 
 \begin{itemize}
-\item {\bf Observation 1:} the sampling is evenly distributed over the whole execution. Based on this, we can use the sampling to represent the whole execution. The similar idea has been widely used by prior work such as Oprofile~\cite{oprofile} and Gprof~\cite{DBLP:conf/sigplan/GrahamKM82} to identify the hotspots of function calls.
+\item {\bf Observation 1:} Samples are evenly distributed over the whole execution. Based on this, we can use the sampling technique to represent the whole execution. The similar idea has been widely used by prior work, such as Oprofile~\cite{oprofile} and Gprof~\cite{DBLP:conf/sigplan/GrahamKM82} to identify the hotspots of function calls.
 
-\item {\bf Observation 2:} The PMU provides the latency information (e.g. cycles) of each memory access, where the latency of accessing falsely-shared objects is significantly higher than that of normal accesses. 
+\item {\bf Observation 2:} The PMU provides the latency information (e.g. cycles) of each memory access; the latency of memory accesses with false sharing are significantly higher than that of other accesses. 
 
 \end{itemize}
 
-Based on these two observations, {\bf we propose to use the sampled cycles to represent the whole execution, and further predict the performance impact of falsely-shared objects by replacing these cycles with the average cycles of memory accesses without false sharing}. The assessment is performed in three steps listed as follows. 
+Based on these two observations, we propose to use the sampled cycles to represent the whole execution, and further predict the performance impact of falsely-shared objects by replacing these cycles with the average cycles of memory accesses without false sharing. The assessment is performed in three steps listed as follows. 
 
 \begin{itemize}
 \item \cheetah{} first predicts the possible cycles after fixes by replacing actual cycles with the average cycles of memory accesses without false sharing, as discussed in Section~\ref{sec:impactobject}. 
@@ -30,7 +28,7 @@ Based on these two observations, {\bf we propose to use the sampled cycles to re
 
 The remainder of this section discusses the detailed assessment step by step. For the simplicity reason, we abbreviate the falsely-shared object as ``$O$'', the related thread as ``$t$'', the prediction as ``$Pred$'', the runtime as ``$RT$'', the application as ``$App$''. 
 
-\subsection{Impact on Accesses of the Object}
+\subsection{Impact on Accesses to the Object}
 \label{sec:impactobject}
 
 At first, \cheetah{} predicts the possible cycles of accesses after fixing false sharing of the object $O$. \cheetah{} collects the total cycles of accesses --- $Cycles\_O$, and the total number of accesses --- $Accesses\_O$. 
