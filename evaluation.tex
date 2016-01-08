@@ -23,12 +23,13 @@ The evaluation answers the following research questions in order as follows.
 \begin{figure*}[htbp]
 \centering
 \includegraphics[width=2\columnwidth]{figure/Overhead.pdf}
-\caption{Runtime overhead of \Cheetah{}. We normalize the runtime to that of \pthreads{}. On average, \cheetah{} only introduces around 7\% performance overhead on all evaluated applications, which makes it practical to be used in real deployment. \label{fig:overhead}}
+\caption{Runtime overhead of \Cheetah{}. We normalize the runtime to that of native execution without monitored by \Cheetah{}. On average, \cheetah{} only introduces around 7\% performance overhead on all evaluated applications, which makes it practical to be used in real deployment. \label{fig:overhead}}
 \end{figure*}
 
 We show the average runtime overhead of \cheetah{} in Figure~\ref{fig:overhead}. We run each application for five times and show the average results here. According to this figure, \cheetah{} only introduces around 7\% performance overhead, which makes it practical to be utilized in the real deployment. 
 
-During the evaluation, we configure \cheetah{} with the sampling frequency at one out of 64K instructions. Thus, for every 64K instructions, the trap handler is notified once so that \cheetah{} can collect the information of memory accesses on heap and global variables. Currently, \Cheetah{} skips memory accesses in kernel, libraries or others. 
+During the evaluation, we configure \cheetah{} with the sampling frequency at one out of 64K instructions. Thus, for every 64K instructions, the signal handler is notified once and filters out instruction samples without memory access.
+\cheetah{} can then associate memory access samples with heap and global variables. Currently, \Cheetah{} skips memory accesses in kernel, libraries or others. 
 
 The performance overhead of \cheetah{} mainly comes from the handling of each sampled memory access and each thread creation. For each sampled access, we collect information, such as the type of access (read or write), the number of cycles, and update  the history table of its corresponding cache line. \cheetah{} also intercepts every thread creation to set up the PMU unit, get the timestamp and update the phase information. For applications with a large number of threads, including \texttt{kmeans} (with 224 threads in 14 seconds) and \texttt{x264} (with 1024 threads in 40 seconds), setting PMU registers introduces non-negligible overhead since it invokes six \texttt{pfmon} APIs and six additional system calls. For other applications, \cheetah{} introduces less than 12\% performance overhead, with 4\% overhead on average if these two applications are excluded.  
 
