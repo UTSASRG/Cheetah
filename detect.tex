@@ -41,11 +41,8 @@ Since PMUs only sample one memory access out of a predefined number of accesses,
 
 \paragraph{Implementation.} 
 
-<<<<<<< HEAD
 In order to sample memory accesses, \cheetah{} programs the PMU registers to turn on sampling before the \texttt{main} routine. It also installs a signal handler to collect detailed memory accesses. \Cheetah{} configures the signal handler to be responded by the current thread, by calling \texttt{fcntl} function with \texttt{F\_SETOWN\_EX} flag. This method avoids the lookup overhead and  simplify the signal handling. Inside the signal handler, \Cheetah{} collects detailed information of every sampled memory access, including its memory address, thread ID, read or write operation, and access latency, which can be fed into the ``FS detection'' module to compute the number of cache invalidations and the ``FS assessment'' module to predict the performance impact.
-=======
-In order to sample memory accesses, \cheetah{} programs the PMU registers to turn on sampling before the \texttt{main} routine. It also installs a signal handler to collect detailed memory accesses. In order to simplify the signal handling, \Cheetah{} configures the signal handler to be responded by the current thread to balance the response of interrupt signals. It calls \texttt{fcntl} function with \texttt{F\_SETOWN\_EX} flag. Inside the signal handler, \Cheetah{} collects detailed information of every sampled memory access, including its memory address, thread ID, read or write operation, and access latency, which can be fed into the ``FS detection'' module to compute the number of cache invalidations and the ``FS assessment'' module to predict the performance impact.
->>>>>>> b5fe6c614fb15d46d82cb75a8d243a6b1f6b828b
+
 
 \subsection{Locating Problematic Cache Lines}
 \label{sec:shadow}
