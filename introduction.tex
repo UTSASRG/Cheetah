@@ -8,7 +8,7 @@ contributions
 structures
 \end{comment}
 
-Multicore processors are ubiquitous in the computing spectrum, from smart phones, personal desktops, to high-end servers. Multithreading is the de-facto programming model to exploit the massive parallelism of modern multicore architectures.
+Multicore processors are ubiquitous in the computing spectrum: from smart phones, personal desktops, to high-end servers. Multithreading is the de-facto programming model to exploit the massive parallelism of modern multicore architectures.
 %Multithreading is widely used to employ these ubiquitous multicore processors for high parallelism. 
 However, multithreaded programs may suffer from various performance issues caused by complex memory hierarchies~\cite{ibs-sc,ibs-sc2,Dramon}. Among them, false sharing is a common flaw that can significantly hurt the performance and scalability of multithreaded programs~\cite{falseshare:effect}. False sharing occurs when different threads, which are running on different cores with private caches, concurrently access logically independent words in the same cache line. When a thread modifies the data of a cache line, the cache coherence protocol (managed by hardware) automatically invalidates the duplicates of this cache line residing in the private caches of other cores~\cite{MESI}. Thus, even if other threads access completely different words inside this cache line, they have to reload the entire cache line from the shared cache or main memory. 
 
@@ -19,27 +19,27 @@ The hardware trend, such as adding more cores on chip and enlarging the cache li
 
 \begin{figure*}[htbp]
 \centering
-\subfigure[A Program with False Sharing]{%
+\subfigure[(a) A Program with False Sharing]{%
    \label{fig:penaltycode}
    \includegraphics[width=3.1in]{figure/fscode}
 
 }%
 \hspace{20pt}
-\subfigure[Performance Degradation]{%
+\subfigure[(b) Performance Degradation]{%
    \label{fig:penaltyfig}
    \includegraphics[width=3.1in]{figure/penalty}
 }
 \caption{
-A false sharing example inside a multithreaded program (a) causes $13\times$ performance degradation on an 8-core machine (b).
+(a) A false sharing example inside a multithreaded program (b) causes $13\times$ performance degradation on an 8-core machine.
 \label{fig:penalty}}
 \end{figure*}
 
 %\todo{Confirm the picture is readable in grey-style printing}
 
-% Now we will talk about existing tools. 
-Unlike true sharing, false sharing is generally avoidable. When multiple threads unnecessarily share the same cache line, we can add byte paddings or utilize thread-private variables so that different threads can be forced to access different cache lines. Although the solution of fixing false sharing problems is somehow straightforward, finding them is difficult and even impossible with manual checking, especially for a program with thousands or millions of lines of code. Thus, it is important to employ tools to pinpoint false sharing and provide insightful optimization guidance.
+% Now we will talk about existing tools.
+Unlike true sharing, false sharing is generally avoidable. When multiple threads unnecessarily share the same cache line, we can add byte paddings or utilize thread-private variables so that different threads can be forced to access different cache lines. Although the solution of fixing false sharing problems is somewhat straightforward, finding them is difficult and even impossible with manual checking, especially for a program with thousands or millions of lines of code. Thus, it is important to employ tools to pinpoint false sharing and provide insightful optimization guidance.
 
-However, existing general-purpose tools do not provide enough details about false sharing~\cite{gprof, ibs-sc, Intel:VTune}. Existing false sharing detectors fall short in several ways. First, most tools cannot distinguish true and false sharing, or require substantial manual effort to identify optimization opportunities~\cite{falseshare:binaryinstrumentation1,detect:ptu,detect:intel,falseshare:binaryinstrumentation2,DProf, OSdetection, mldetect, Wicaksono11detectingfalse, openmp}. Second, tools~\cite{falseshare:binaryinstrumentation1,falseshare:binaryinstrumentation2,falseshare:simulator, Predator, qinzhao} based on memory access instrumentation introduce high runtime overhead, hindering its applicability to real, long-run applications. Third, tools that are based on OS either requiring kernel extension~\cite{OSdetection} or working on special applications only~\cite{Sheriff}. Fourth, none of prior tools assesses the performance gain from eliminating a found false sharing bottleneck. Without this information, many optimization efforts may yield trivial or no performance improvement~\cite{Sheriff, qinzhao}.
+However, existing general-purpose tools do not provide enough details about false sharing~\cite{gprof, ibs-sc, Intel:VTune}. Existing false sharing detectors fall short in several ways. First, most tools cannot distinguish true and false sharing, or require substantial manual effort to identify optimization opportunities~\cite{falseshare:binaryinstrumentation1,detect:ptu,detect:intel,falseshare:binaryinstrumentation2,DProf, OSdetection, mldetect, Wicaksono11detectingfalse, openmp}. Second, tools~\cite{falseshare:binaryinstrumentation1,falseshare:binaryinstrumentation2,falseshare:simulator, Predator, qinzhao} based on memory access instrumentation introduce high runtime overhead, hindering their applicability to real, long-run applications. Third, some tools either rely on the OS requiring kernel extensions~\cite{OSdetection}, or only work on special applications~\cite{Sheriff}. Fourth, no prior tools assess the performance gain from eliminating an identified false sharing bottleneck. Without this information, many optimization efforts may yield trivial or no performance improvement~\cite{Sheriff, qinzhao}.
 
 \Cheetah{} is designed to address all these issues with the following two contributions:
 \begin{itemize} 
@@ -47,14 +47,14 @@ However, existing general-purpose tools do not provide enough details about fals
 % The first one is overrated. We can't do that. 
 \item {\bf The First Approach to Predict False Sharing Impact.} This paper introduces the first approach to predict the potential performance impact of fixing false sharing instances, without actual fixes. Based on our evaluation, \cheetah{} can precisely assess the performance improvement, with less than 10\% difference. By ruling out trivial instances, we can avoid unnecessary manual effort leading to little or no performance improvement. 
 
-\item {\bf An Efficient and Effective False Sharing Detector.} \cheetah{} is an efficient false sharing detector, with only $\sim$7\% performance overhead. \Cheetah{} utilizes the Performance Monitoring Units (PMUs) that are available in modern CPU architectures to sample memory accesses. \cheetah{} provides sufficient information on false sharing problems, by pointing out the lines of code or the names of variables, and providing detailed memory accesses involved in the false sharing. \cheetah{} is a runtime library that is very convenient to be deployed. There is no need for a custom OS,  or recompilation and changing of programs. 
+\item {\bf An Efficient and Effective False Sharing Detector.} \cheetah{} is an efficient false sharing detector, with only $\sim$7\% performance overhead. \Cheetah{} utilizes the performance monitoring units (PMUs) that are available in modern CPU architectures to sample memory accesses. \Cheetah{} provides sufficient information on false sharing problems, by pointing out the lines of code, names of variables, and detailed memory accesses involved in the false sharing. \Cheetah{} is a runtime library that is very convenient to be deployed; there is no need for a custom OS, nor recompilation and changing of programs. 
 
 \end{itemize}
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=1\columnwidth]{figure/cheetahcomponents}
-\caption{Overview of \cheetah{}'s components (shadow blocks), where FS is the abbreviation for false sharing.}
+\caption{Overview of \cheetah{}'s components (shadow blocks), where ``FS'' is the abbreviation for false sharing.}
 \label{fig:components}
 \end{figure}
 
@@ -66,7 +66,7 @@ However, existing general-purpose tools do not provide enough details about fals
 %\paragraph{\cheetah{} Overview}
 Figure~\ref{fig:components} shows the overview of \Cheetah{}. 
 %When the Performance Monitoring Unit (PMU) invokes an interrupt according to the pre-set sampling frequency, 
-The ``data collection'' module gleans memory accesses via the address sampling supported by the hardware performance monitoring units (PMUs) (with the assistance of the ``driver'' module), filters out memory accesses relating to heap or globals, and feeds them into the ``FS detection'' module. At the end of an application or when \cheetah{} is requested to report, the ``FS detection'' module examines the number of cache invalidations of each cache line, differentiates false sharing from true sharing, and passes false sharing instances to the ``FS assessment'' module. In the end, the ``FS report'' module only reports false sharing instances with a significant performance impact, with its predicted performance improvement after fixes that are provided by the ``FS assessment'' module. 
+The ``data collection'' module gleans memory accesses via the address sampling supported by the hardware performance monitoring units (PMUs) and, with the assistance of the ``driver'' module, filters out memory accesses relating to heap or globals, feeding them into the ``FS detection'' module. At the end of an application, or when \cheetah{} is requested to report, the ``FS detection'' module examines the number of cache invalidations of each cache line, differentiates false sharing from true sharing, and passes false sharing instances to the ``FS assessment'' module. In the end, the ``FS report'' module only reports false sharing instances with a significant performance impact, along with its predicted performance improvement after fixes provided by the ``FS assessment'' module. 
 
 %\Cheetah{} is has a co-design with hardware, operating system, and the user space programs. It monitors the memory accesses via the hardware performance monitoring unit (PMU) supported address sampling. By analyzing the address samples, \cheetah{} identifies significant false sharing problems (in FS-Detection component) and quantifies their impacts to the whole program execution (in FS-assessment component).
 %'s components. When the Performance Monitoring Unit (PMU) invokes an interrupt according to the pre-set sampling frequency, the ``driver'' passes all information about a memory access to the ``data collection'' module residing in \Cheetah{}'s runtime system. Upon receiving this, the ``data collection'' module filters out memory accesses relating to heap or globals, and feeds them into the ``FS detection'' module. At the end of an application or when \cheetah{} is notified to report, ``FS detection'' will examine the number of cache invalidations of each cache line, differentiate false sharing from true sharing, and pass false sharing instances to the ``FS assessment'' module. Thus, ``FS report'' module only reports false sharing instances with significant performance impact, with its predicted performance improvement after fixes for every instance. 
@@ -74,7 +74,7 @@ The ``data collection'' module gleans memory accesses via the address sampling s
 %\paragraph{Paper Organization} 
 The remainder of this paper is organized as follows. 
 %Section~\ref{sec:overview} introduces the background of false sharing and the motivation of a new detection tool. 
-Section~\ref{sec:detect} describes the design and implementation of our false sharing detection tool. Section~\ref{sec:predictimprove} discuesses how \cheetah{} assesses the performance impact of a false sharing instance. Section~\ref{sec:eval} presents experimental results, including effectiveness, performance overhead, and assessment precision. Section~\ref{sec:discuss} addresses main concerns about hardware dependence, performance and effectiveness. Section~\ref{sec:relatedwork} discusses related work and Section~\ref{sec:conclusion} concludes this paper. 
+Section~\ref{sec:detect} describes the design and implementation of our false sharing detection tool. Section~\ref{sec:predictimprove} discuesses how \cheetah{} assesses the performance impact of a false sharing instance. Section~\ref{sec:eval} presents experimental results, including effectiveness, performance overhead, and assessment precision. Section~\ref{sec:discuss} addresses main concerns about hardware dependence, performance, and effectiveness. Lastly, Section~\ref{sec:relatedwork} discusses related work, and Section~\ref{sec:conclusion} concludes this paper. 
 
 
 
